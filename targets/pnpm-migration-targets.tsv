@@ -1,0 +1,6 @@
+id	repo	branch	install_cmd	baseline_cmd	post_migrate_cmd	notes
+promptfoo	promptfoo/promptfoo	main	npm ci	npm test	pnpm test	Workspace repo with app/site packages and many npm workflow references.
+jsdoc	jsdoc/jsdoc	main	npm install	npm test	pnpm test	Large npm workspace repo; good monorepo migration candidate.
+dompurify	cure53/DOMPurify	main	npm ci	npm test	pnpm test	Popular single package with npm scripts in package.json and CI.
+markdown-it	markdown-it/markdown-it	master	npm ci	npm test	pnpm test	Mature package with smaller package surface and npm CI cache usage.
+bpmn-js	bpmn-io/bpmn-js	develop	npm ci	npm test	pnpm test	Build/test pipeline uses karma; useful browser/test complexity candidate.
