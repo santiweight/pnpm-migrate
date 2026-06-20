@@ -50,18 +50,24 @@ Each overnight tool run writes `run.env` with the source commit, dirty state, ta
 
 Latest assertion-checked 10-target local tool run:
 
+```text
+run_id=20260620-021807-1
+git_commit=4703f26c90d153db41b9c6f27716fb6789fc16b6
+git_dirty=false
+```
+
 | Repo | Baseline | pnpm-migrate result | Migration time | Changed files |
 | --- | --- | --- | ---: | ---: |
-| `bpmn-js` | Pass | Pass | 52s | 9 |
-| `dayjs` | Pass | Pass | 21s | 6 |
-| `dompurify` | Pass | Pass | 97s | 9 |
-| `github-readme-stats` | Pass | Pass | 15s | 10 |
-| `html5-boilerplate` | Pass | Pass | 6s | 6 |
-| `jquery` | Pass | Pass | 16s | 11 |
-| `jsdoc` | Pass | Pass | 11s | 13 |
-| `lodash` | Pass | Pass | 24s | 8 |
-| `markdown-it` | Pass | Pass | 15s | 5 |
-| `uuid` | Pass | Pass | 19s | 15 |
+| `bpmn-js` | Pass | Pass | 50s | 12 |
+| `dayjs` | Pass | Pass | 24s | 7 |
+| `dompurify` | Pass | Pass | 97s | 11 |
+| `github-readme-stats` | Pass | Pass | 14s | 11 |
+| `html5-boilerplate` | Pass | Pass | 7s | 9 |
+| `jquery` | Pass | Pass | 15s | 14 |
+| `jsdoc` | Pass | Pass | 12s | 15 |
+| `lodash` | Pass | Pass | 21s | 10 |
+| `markdown-it` | Pass | Pass | 15s | 6 |
+| `uuid` | Pass | Pass | 15s | 27 |
 
 Current Claude comparison from earlier paired runs:
 
