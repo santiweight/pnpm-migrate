@@ -34,6 +34,15 @@ run_tool_eval() {
   local run_id="$1"
   local run_root="$BASE_ROOT/$run_id/tool"
   mkdir -p "$run_root"
+  {
+    printf 'run_id=%s\n' "$run_id"
+    printf 'started_at=%s\n' "$(timestamp)"
+    printf 'method=tool\n'
+    printf 'git_commit=%s\n' "$(git -C "$ROOT" rev-parse HEAD 2>/dev/null || printf unknown)"
+    printf 'git_dirty=%s\n' "$(test -z "$(git -C "$ROOT" status --porcelain 2>/dev/null)" && printf false || printf true)"
+    printf 'targets_file=%s\n' "$TARGETS_FILE"
+    printf 'timeout_seconds=%s\n' "$TIMEOUT_SECONDS"
+  } > "$run_root/run.env"
   log "tool eval: $run_root"
   PNPM_MIGRATE_EVAL_ROOT="$run_root" \
   PNPM_MIGRATE_EVAL_TIMEOUT_SECONDS="$TIMEOUT_SECONDS" \

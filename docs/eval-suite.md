@@ -44,6 +44,8 @@ Run the overnight loop until 9:00 AM:
 scripts/overnight-loop.sh
 ```
 
+Each overnight tool run writes `run.env` with the source commit, dirty state, target file, and timeout.
+
 ## Scorecard
 
 Latest assertion-checked 10-target local tool run:
