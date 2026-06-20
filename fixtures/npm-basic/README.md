@@ -2,6 +2,7 @@
 
 ```bash
 npm install
+npm start
 npm run build
 npm test
 npx cowsay hello
@@ -19,3 +20,5 @@ Release commands are not rewritten automatically:
 ```bash
 npm publish
 ```
+
+Contributor checks: `npm test && npm run build`

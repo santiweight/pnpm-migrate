@@ -30,12 +30,14 @@ run_fixture npm-basic
 cd "$TMP_DIR/npm-basic"
 grep -q 'cache: pnpm' .github/workflows/ci.yml
 grep -q 'pnpm install' README.md
+grep -q 'pnpm start' README.md
 grep -q 'pnpm build' README.md
 grep -q 'pnpm test' README.md
 grep -q 'pnpm dlx cowsay hello' README.md
 grep -q 'npm install npm-basic --save' README.md
 grep -q 'npm install --save-dev npm-basic' README.md
 grep -q 'npm publish' README.md
+grep -q 'Contributor checks: `pnpm test && pnpm build`' README.md
 
 run_fixture npm-workspace
 

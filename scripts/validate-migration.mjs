@@ -59,7 +59,7 @@ for (const lockfile of ['package-lock.json', 'npm-shrinkwrap.json']) {
   }
 }
 
-const hardNpmPattern = /\b(?:npm\s+(?:ci|install|run|test|exec)|npm:[A-Za-z0-9:_*-]+|npx)\b/;
+const hardNpmPattern = /\b(?:npm\s+(?:ci|install|run|test|start|exec)|npm:[A-Za-z0-9:_*-]+|npx)\b/;
 const auditPattern = /\bnpm\s+audit\b/;
 const badPnpmPattern = /\bpnpm\s+(?:exec\s+-(?:y|yes)|install\s+-g|(?:exec|dlx)\s+(?:-[^\s]+\s+)*npm@?[^\s]*)\b|\binstall\/\b/;
 const removedLockfilePattern = /\b(?:package-lock\.json|npm-shrinkwrap\.json)\b/;

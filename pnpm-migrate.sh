@@ -261,6 +261,7 @@ text = text
   .replace(/\bnpm ci\b/g, 'pnpm install --frozen-lockfile')
   .replace(/\bnpm install\b/g, 'pnpm install')
   .replace(/\bnpm test\b/g, 'pnpm test')
+  .replace(/\bnpm start\b/g, 'pnpm start')
   .replace(/\bnpm run (\$\{\{[^}]+\}\})/g, 'pnpm $1')
   .replace(/\bnpm run ([A-Za-z0-9:_-]+) --\s+/g, 'pnpm $1 ')
   .replace(/\bnpm run ([A-Za-z0-9:_-]+)/g, 'pnpm $1')
@@ -378,6 +379,7 @@ for (const packagePath of walk('.')) {
       .replace(/\bnpm run ([A-Za-z0-9:_-]+) --\s+/g, 'pnpm $1 ')
       .replace(/\bnpm run ([A-Za-z0-9:_-]+)\b/g, 'pnpm $1')
       .replace(/\bnpm test\b/g, 'pnpm test')
+      .replace(/\bnpm start\b/g, 'pnpm start')
       .replace(/\bnpm exec\b/g, 'pnpm exec')
       .replace(/\bnpx\s+(?:-y|--yes)\s+npm@[^\s]+\s+ci\b/g, 'pnpm install --frozen-lockfile')
       .replace(/\bnpx\s+-y\s+([^\s]+)/g, 'pnpm dlx $1')
@@ -594,6 +596,7 @@ function rewriteCommandText(text) {
     .replace(/\bnpm ci\b/g, 'pnpm install --frozen-lockfile')
     .replace(/\bnpm install(?=\s*(?:$|[#`;&|]))/g, 'pnpm install')
     .replace(/\bnpm test\b/g, 'pnpm test')
+    .replace(/\bnpm start\b/g, 'pnpm start')
     .replace(/\bnpm run ([A-Za-z0-9:_-]+) --\s+/g, 'pnpm $1 ')
     .replace(/\bnpm run ([A-Za-z0-9:_-]+)/g, 'pnpm $1')
     .replace(/\bnpx\s+(@[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)/g, 'pnpm dlx $1')
@@ -621,6 +624,11 @@ function rewriteMarkdown(text) {
 
     if (isCommandLine) {
       lines[i] = rewriteCommandText(line);
+    } else {
+      lines[i] = line.replace(/`([^`]*(?:npm|npx)[^`]*)`/g, (match, command) => {
+        const rewritten = rewriteCommandText(command);
+        return rewritten === command ? match : `\`${rewritten}\``;
+      });
     }
   }
   return lines.join('');
@@ -640,7 +648,7 @@ NODE
 const fs = require('fs');
 const path = process.argv[2];
 const text = fs.readFileSync(path, 'utf8');
-const risky = /\b(npm\s+(ci|install|run|test|exec|publish|version)|npm:[A-Za-z0-9:_*-]+|npx)\b/g;
+const risky = /\b(npm\s+(ci|install|run|test|start|exec|publish|version)|npm:[A-Za-z0-9:_*-]+|npx)\b/g;
 let match;
 let found = false;
 const lines = text.split(/\r?\n/);

@@ -101,3 +101,4 @@ Recent eval failures added these deterministic checks:
 - Scoped package invocations such as `npx @puppeteer/browsers ...` are rewritten to `pnpm dlx @puppeteer/browsers ...`.
 - Source imports hidden by npm's flatter install tree are promoted to direct dev dependencies when the imported package exists in `package-lock.json`.
 - Contributor-style Markdown commands are rewritten, while package install examples and release/audit commands remain warnings for review.
+- Direct `npm start` commands and backticked inline contributor commands are rewritten. A focused `uuid` run covers this case.
