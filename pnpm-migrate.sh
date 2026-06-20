@@ -527,7 +527,12 @@ const patterns = [
 let changed = false;
 
 for (const pkgPath of packageFiles) {
-  const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+  let pkg;
+  try {
+    pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+  } catch {
+    continue;
+  }
   const pkgDir = path.dirname(pkgPath);
   const imports = new Set();
 

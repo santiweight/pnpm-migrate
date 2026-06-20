@@ -50,7 +50,7 @@ Current corrected local tool run:
 | `github-readme-stats` | Pass | Pass | 12s | 10 |
 | `html5-boilerplate` | Pass | Pass | 6s | 6 |
 | `jquery` | Pass | Pass | 16s | 11 |
-| `jsdoc` | Pass | Pass | 10s | 10 |
+| `jsdoc` | Pass | Pass | 11s | 13 |
 | `lodash` | Pass | Pass | 25s | 8 |
 | `markdown-it` | Pass | Pass | 15s | 5 |
 | `uuid` | Pass | Pass | 17s | 15 |
