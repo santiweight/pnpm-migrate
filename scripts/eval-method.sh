@@ -6,6 +6,7 @@ TARGETS_FILE="${TARGETS_FILE:-$ROOT/targets/pnpm-migration-targets.tsv}"
 EVAL_ROOT="${PNPM_MIGRATE_EVAL_ROOT:-$ROOT/.eval/methods}"
 TIMEOUT_SECONDS="${PNPM_MIGRATE_EVAL_TIMEOUT_SECONDS:-300}"
 CLAUDE_PERMISSION_MODE="${PNPM_MIGRATE_CLAUDE_PERMISSION_MODE:-bypassPermissions}"
+ALLOW_BASELINE_FAILURE="${PNPM_MIGRATE_EVAL_ALLOW_BASELINE_FAILURE:-0}"
 TARGET_ID="${1:-}"
 METHOD="${2:-}"
 
@@ -120,10 +121,12 @@ run_validation() {
 }
 
 run_baseline() {
-  timed_run baseline-install bash -lc "$install_cmd" || true
-  timed_run baseline-test bash -lc "$baseline_cmd" || true
+  local status=0
+  timed_run baseline-install bash -lc "$install_cmd" || status=1
+  timed_run baseline-test bash -lc "$baseline_cmd" || status=1
   git -C "$WORKTREE" reset --hard "origin/$branch"
   git -C "$WORKTREE" clean -fdx
+  return "$status"
 }
 
 run_post_test() {
@@ -131,7 +134,7 @@ run_post_test() {
 }
 
 run_tool() {
-  timed_run migrate bash "$ROOT/pnpm-migrate.sh" --yes --agent manual
+  timed_run migrate bash "$ROOT/pnpm-migrate.sh" --yes --agent manual --no-tests
 }
 
 run_claude() {
@@ -175,7 +178,13 @@ PROMPT
 }
 
 clone_target
-run_baseline
+if ! run_baseline && [ "$ALLOW_BASELINE_FAILURE" -ne 1 ]; then
+  log "baseline failed; skipping migration phases"
+  record migrate 125 0
+  record validate 125 0
+  record post-test 125 0
+  exit 0
+fi
 
 case "$METHOD" in
   tool)

@@ -215,7 +215,7 @@ write_pnpm_workspace_if_needed() {
 
 set_package_manager() {
   local pnpm_version
-  pnpm_version="$(pnpm --version 2>/dev/null || printf 'latest')"
+  pnpm_version="$(COREPACK_ENABLE_STRICT=0 COREPACK_ENABLE_PROJECT_SPEC=0 pnpm --version 2>/dev/null || pnpm --version 2>/dev/null || printf '11.0.0')"
   if [ "$DRY_RUN" -eq 1 ]; then
     printf '[dry-run] set packageManager to pnpm@%s when missing\n' "$pnpm_version"
     return
@@ -364,6 +364,9 @@ for (const packagePath of walk('.')) {
     if (/^(pre|post)?(?:pack|publish|version)$|^release(?::|$)/.test(name)) continue;
     let next = value
       .replace(/\bnpm install --prefix ([^\s&|;]+)/g, (_, dir) => `pnpm --dir ${dir.replace(/\/+$/, '')} install`)
+      .replace(/\bnpm ci\b/g, 'pnpm install --frozen-lockfile')
+      .replace(/\bnpm install --no-package-lock\b/g, 'pnpm install')
+      .replace(/\bnpm install\b/g, 'pnpm install')
       .replace(/\bnpm --prefix ([^\s&|;]+) run ([A-Za-z0-9:_-]+) --\s*/g, 'pnpm --dir $1 $2 ')
       .replace(/\bnpm --prefix ([^\s&|;]+) run ([A-Za-z0-9:_-]+)\b/g, 'pnpm --dir $1 $2')
       .replace(/\bnpm run ([A-Za-z0-9:_-]+) --prefix ([^\s&|;]+)\b/g, 'pnpm --dir $2 $1')
@@ -393,6 +396,56 @@ for (const packagePath of walk('.')) {
     fs.writeFileSync(packagePath, `${JSON.stringify(pkg, null, 2)}\n`);
   }
 }
+NODE
+
+  cat > "$STATE_DIR/repair-node-types-dependency.js" <<'NODE'
+const fs = require('fs');
+const path = require('path');
+
+const pkgPath = 'package.json';
+const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+
+if (pkg.dependencies?.['@types/node'] || pkg.devDependencies?.['@types/node']) {
+  process.exit(0);
+}
+
+if (!pkg.dependencies?.typescript && !pkg.devDependencies?.typescript) {
+  process.exit(0);
+}
+
+const skipDirs = new Set(['.git', 'node_modules', '.pnpm-store', 'dist', 'coverage']);
+const extensions = new Set(['.ts', '.tsx', '.mts', '.cts']);
+
+function walk(dir, files = []) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (skipDirs.has(entry.name)) continue;
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      walk(full, files);
+    } else if (extensions.has(path.extname(entry.name))) {
+      files.push(full);
+    }
+  }
+  return files;
+}
+
+const usesNodeTypes = walk('.').some((file) => {
+  const text = fs.readFileSync(file, 'utf8');
+  return /\bfrom\s+['"]node:/.test(text) ||
+    /\bimport\s*\(\s*['"]node:/.test(text) ||
+    /\brequire\s*\(\s*['"]node:/.test(text) ||
+    /\b(Buffer|process|__dirname|__filename)\b/.test(text);
+});
+
+if (!usesNodeTypes) {
+  process.exit(0);
+}
+
+const major = process.versions.node.split('.')[0];
+pkg.devDependencies ||= {};
+pkg.devDependencies['@types/node'] = `^${major}.0.0`;
+fs.writeFileSync(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`);
+console.log(`package.json: added devDependency @types/node@^${major}.0.0`);
 NODE
 
   cat > "$STATE_DIR/find-remaining-npm.js" <<'NODE'
@@ -713,6 +766,14 @@ repair_workspace_import_dependencies() {
   node "$STATE_DIR/repair-workspace-import-deps.js"
 }
 
+repair_node_types_dependency() {
+  if [ "$DRY_RUN" -eq 1 ]; then
+    printf '[dry-run] inspect TypeScript sources for implicit Node type dependency\n'
+    return 0
+  fi
+  node "$STATE_DIR/repair-node-types-dependency.js"
+}
+
 remove_npm_lockfiles() {
   if [ -f package-lock.json ]; then
     log "removing package-lock.json"
@@ -923,12 +984,13 @@ main() {
   log "selected agent: $AGENT"
 
   write_pnpm_workspace_if_needed
-  convert_lockfile
   set_package_manager
+  convert_lockfile
   remove_npm_lockfiles
   rewrite_package_scripts
   fix_karma_configs
   repair_workspace_import_dependencies
+  repair_node_types_dependency
   install_deps
   rewrite_ci_npm_commands
   report_remaining_npm_commands

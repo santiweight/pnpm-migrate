@@ -2,7 +2,8 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-TARGETS="${TARGETS:-markdown-it jsdoc dompurify bpmn-js promptfoo}"
+TARGETS_FILE="${TARGETS_FILE:-$ROOT/targets/pnpm-migration-targets.tsv}"
+TARGETS="${TARGETS:-$(awk -F'\t' 'NR > 1 {print $1}' "$TARGETS_FILE" | tr '\n' ' ')}"
 METHODS="${METHODS:-tool claude}"
 
 for target in $TARGETS; do
