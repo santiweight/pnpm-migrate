@@ -75,7 +75,7 @@ for (const [key, attempts] of byRun) {
   const baselinePassed = baselineComplete && baselineInstall.status === 0 && baselineTest.status === 0;
   const migrationComplete = Boolean(validate && postTest);
   const pass = migrationComplete && validate.status === 0 && postTest.status === 0 && migrationRows.every((row) => row.status === 0 || method === 'claude');
-  const result = !baselineComplete || (baselinePassed && !migrationComplete)
+  const result = !migrationComplete
     ? 'running'
     : pass
       ? 'pass'

@@ -7,6 +7,8 @@ EVAL_ROOT="${PNPM_MIGRATE_EVAL_ROOT:-$ROOT/.eval/methods}"
 TIMEOUT_SECONDS="${PNPM_MIGRATE_EVAL_TIMEOUT_SECONDS:-300}"
 CLAUDE_PERMISSION_MODE="${PNPM_MIGRATE_CLAUDE_PERMISSION_MODE:-bypassPermissions}"
 ALLOW_BASELINE_FAILURE="${PNPM_MIGRATE_EVAL_ALLOW_BASELINE_FAILURE:-0}"
+SKIP_BASELINE="${PNPM_MIGRATE_EVAL_SKIP_BASELINE:-0}"
+MIRROR_ROOT="${PNPM_MIGRATE_EVAL_MIRROR_ROOT:-}"
 TARGET_ID="${1:-}"
 METHOD="${2:-}"
 
@@ -112,7 +114,18 @@ clone_target() {
     git -C "$WORKTREE" clean -fdx
   else
     log "cloning $repo#$branch"
-    git clone --depth 1 --branch "$branch" "https://github.com/$repo.git" "$WORKTREE"
+    if [ -n "$MIRROR_ROOT" ]; then
+      mkdir -p "$MIRROR_ROOT"
+      local mirror="$MIRROR_ROOT/${repo//\//__}.git"
+      if [ -d "$mirror" ]; then
+        git -C "$mirror" fetch --prune origin
+      else
+        git clone --mirror "https://github.com/$repo.git" "$mirror"
+      fi
+      git clone --shared --branch "$branch" "$mirror" "$WORKTREE"
+    else
+      git clone --depth 1 --branch "$branch" "https://github.com/$repo.git" "$WORKTREE"
+    fi
   fi
 }
 
@@ -178,7 +191,11 @@ PROMPT
 }
 
 clone_target
-if ! run_baseline && [ "$ALLOW_BASELINE_FAILURE" -ne 1 ]; then
+if [ "$SKIP_BASELINE" -eq 1 ]; then
+  log "baseline skipped"
+  record baseline-install 0 0
+  record baseline-test 0 0
+elif ! run_baseline && [ "$ALLOW_BASELINE_FAILURE" -ne 1 ]; then
   log "baseline failed; skipping migration phases"
   record migrate 125 0
   record validate 125 0

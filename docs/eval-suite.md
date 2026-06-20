@@ -20,6 +20,30 @@ Run all configured targets:
 scripts/eval-methods.sh
 ```
 
+Skip baseline install/test for a faster repeat migration check after a target has already been qualified:
+
+```bash
+PNPM_MIGRATE_EVAL_SKIP_BASELINE=1 scripts/eval-method.sh uuid tool
+```
+
+Use a local git mirror cache to make fresh eval roots clone faster:
+
+```bash
+PNPM_MIGRATE_EVAL_MIRROR_ROOT=.eval/mirrors scripts/eval-method.sh uuid tool
+```
+
+Run independent targets in parallel:
+
+```bash
+PNPM_MIGRATE_EVAL_JOBS=4 METHODS=tool scripts/eval-methods.sh
+```
+
+The runner writes wall-clock timing to:
+
+```text
+.eval/methods/wall-time.txt
+```
+
 Results are written to:
 
 ```text
@@ -71,15 +95,30 @@ git_dirty=false
 
 Stability check: `20260620-022729-2` also passed all 10 targets from the same clean source commit.
 
-Current Claude comparison from earlier paired runs:
+Fast repeat mode after targets are already baseline-qualified:
 
-| Repo | Claude result | pnpm-migrate result | Signal |
-| --- | --- | --- | --- |
-| `markdown-it` | Pass, 149s, 7 changed files | Pass, 117s corrected run, 5 changed files | Tool is faster and smaller. |
-| `DOMPurify` | Pass, 817s, 14 changed files | Pass, 103s corrected run, 8 changed files | Tool is much faster and smaller. |
-| `bpmn-js` | Pass, 411s, 9 changed files | Pass, 52s corrected run, 9 changed files | Tool is much faster. |
-| `jsdoc` | Pass, 237s, 10 changed files | Pass, 58s corrected run, 10 changed files | Tool is much faster. |
-| `jquery` | Pass, 591s, 14 changed files | Pass, 19s, 11 changed files | Tool saved 572s and kept docs/release scope tighter. |
+```text
+PNPM_MIGRATE_EVAL_SKIP_BASELINE=1
+PNPM_MIGRATE_EVAL_MIRROR_ROOT=.eval/mirrors
+PNPM_MIGRATE_EVAL_JOBS=4
+```
+
+Measured local result: `.eval/parallel-fast-10-shared` passed all 10 targets in 203 seconds wall time. The equivalent sequential phase sum from the latest assertion-checked run is 466 seconds.
+
+Current 10-repo Claude comparison:
+
+| Repo | Claude migration | pnpm-migrate migration | Time saved |
+| --- | ---: | ---: | ---: |
+| `bpmn-js` | 411s, 9 files | 50s, 12 files | 361s |
+| `dayjs` | 362s, 8 files | 24s, 7 files | 338s |
+| `dompurify` | 817s, 14 files | 97s, 11 files | 720s |
+| `github-readme-stats` | 200s, 13 files | 14s, 11 files | 186s |
+| `html5-boilerplate` | 234s, 12 files | 7s, 9 files | 227s |
+| `jquery` | 591s, 14 files | 15s, 14 files | 576s |
+| `jsdoc` | 238s, 10 files | 12s, 15 files | 226s |
+| `lodash` | 447s, 11 files | 21s, 10 files | 426s |
+| `markdown-it` | 149s, 7 files | 15s, 6 files | 134s |
+| `uuid` | 999s, 18 files | 15s, 27 files | 984s |
 
 Signal: `pnpm-migrate` is useful as the deterministic migration engine. Claude is better as an optional cleanup/review pass after the tool, not as the first migration step.
 

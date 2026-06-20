@@ -10,6 +10,9 @@ SLEEP_SECONDS="${PNPM_MIGRATE_OVERNIGHT_SLEEP_SECONDS:-60}"
 RUN_CLAUDE="${PNPM_MIGRATE_RUN_CLAUDE:-0}"
 CLAUDE_TARGETS="${PNPM_MIGRATE_CLAUDE_TARGETS:-markdown-it html5-boilerplate github-readme-stats}"
 BASE_ROOT="${PNPM_MIGRATE_OVERNIGHT_ROOT:-$ROOT/.eval/overnight}"
+EVAL_JOBS="${PNPM_MIGRATE_EVAL_JOBS:-1}"
+EVAL_SKIP_BASELINE="${PNPM_MIGRATE_EVAL_SKIP_BASELINE:-0}"
+EVAL_MIRROR_ROOT="${PNPM_MIGRATE_EVAL_MIRROR_ROOT:-}"
 
 end_epoch() {
   node - "$END_HOUR" <<'NODE'
@@ -60,6 +63,9 @@ run_tool_eval() {
     printf 'git_dirty=%s\n' "$(test -z "$(git -C "$ROOT" status --porcelain 2>/dev/null)" && printf false || printf true)"
     printf 'targets_file=%s\n' "$TARGETS_FILE"
     printf 'timeout_seconds=%s\n' "$TIMEOUT_SECONDS"
+    printf 'eval_jobs=%s\n' "$EVAL_JOBS"
+    printf 'eval_skip_baseline=%s\n' "$EVAL_SKIP_BASELINE"
+    printf 'eval_mirror_root=%s\n' "$EVAL_MIRROR_ROOT"
   } > "$run_root/run.env"
   log "tool eval: $run_root"
   PNPM_MIGRATE_EVAL_ROOT="$run_root" \
