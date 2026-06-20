@@ -65,6 +65,7 @@ const badPnpmPattern = /\bpnpm\s+(?:exec\s+-(?:y|yes)|install\s+-g|(?:exec|dlx)\
 const removedLockfilePattern = /\b(?:package-lock\.json|npm-shrinkwrap\.json)\b/;
 const unsupportedPnpmLockfileLintPattern = /\blockfile-lint\b.*--path\s+pnpm-lock\.yaml\b/;
 const publishPattern = /\bnpm\s+(?:publish|version)\b/;
+const releaseScriptNamePattern = /^(pre|post)?(?:pack|publish|version)$|^release(?::|$)/;
 
 for (const file of walk(root).filter((entry) => path.basename(entry) === 'package.json')) {
   const rel = relative(file);
@@ -76,7 +77,9 @@ for (const file of walk(root).filter((entry) => path.basename(entry) === 'packag
     continue;
   }
   for (const [name, script] of Object.entries(pkg.scripts || {})) {
-    if (typeof script === 'string' && hardNpmPattern.test(script)) {
+    if (typeof script === 'string' && hardNpmPattern.test(script) && releaseScriptNamePattern.test(name)) {
+      warnings.push(`${rel} release script "${name}" contains npm/npx command requiring maintainer review: ${script}`);
+    } else if (typeof script === 'string' && hardNpmPattern.test(script)) {
       errors.push(`${rel} script "${name}" still contains npm/npx command: ${script}`);
     }
     if (typeof script === 'string' && badPnpmPattern.test(script)) {

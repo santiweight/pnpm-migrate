@@ -357,6 +357,7 @@ for (const packagePath of walk('.')) {
 
   for (const [name, value] of Object.entries(scripts)) {
     if (typeof value !== 'string') continue;
+    if (/^(pre|post)?(?:pack|publish|version)$|^release(?::|$)/.test(name)) continue;
     let next = value
       .replace(/\bnpm install --prefix ([^\s&|;]+)/g, (_, dir) => `pnpm --dir ${dir.replace(/\/+$/, '')} install`)
       .replace(/\bnpm --prefix ([^\s&|;]+) run ([A-Za-z0-9:_-]+) --\s*/g, 'pnpm --dir $1 $2 ')
