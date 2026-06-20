@@ -5,6 +5,8 @@ The eval compares two migration methods against the same target repos:
 - `claude`: ask Claude Code to migrate npm to pnpm over multiple passes.
 - `tool`: run `pnpm-migrate.sh`, then validate and test.
 
+Each run records baseline install/test, migration, validation, and post-migration test phases.
+
 Run one target:
 
 ```bash
@@ -31,12 +33,17 @@ Current local run:
 | Repo | Claude result | pnpm-migrate result | Tests | Time saved |
 | --- | --- | --- | --- | --- |
 | `markdown-it` | Pass, 149s, 7 changed files | Pass, 25s, 5 changed files | Pass | 124s |
-| `DOMPurify` | TBD | TBD | TBD | TBD |
-| `bpmn-js` | TBD | TBD | TBD | TBD |
-| `jsdoc` | TBD | TBD | TBD | TBD |
+| `DOMPurify` | Pass, 817s, 14 changed files | Pass, 562s, 8 changed files | Pass | 255s |
+| `bpmn-js` | Pass, 411s, 9 changed files | Pass, 164s, 9 changed files | Pass | 247s |
+| `jsdoc` | Pass, 237s, 10 changed files | Baseline-aware rerun in progress | TBD | TBD |
 | `promptfoo` | TBD | TBD | TBD | TBD |
+| `axios` | Not run | Baseline-aware rerun in progress | TBD | TBD |
+| `dayjs` | Not run | Baseline-aware rerun in progress | TBD | TBD |
+| `marked` | Not run | Baseline-aware rerun in progress | TBD | TBD |
+| `lodash` | Not run | Baseline-aware rerun in progress | TBD | TBD |
+| `reveal-js` | Not run | Baseline-aware rerun in progress | TBD | TBD |
 
-On `markdown-it`, both methods reached passing validation and `pnpm test`. `pnpm-migrate` was faster and left product docs plus release lifecycle scripts as review items. Claude edited product docs during the repair pass even though the prompt asked it to avoid unrelated docs.
+Early signal: on the first three green repos, `pnpm-migrate` is materially faster than multi-pass Claude and changes fewer files on two of three. It also surfaces docs and release-command references as review items instead of blindly editing product docs.
 
 `Time saved` should be calculated as:
 
