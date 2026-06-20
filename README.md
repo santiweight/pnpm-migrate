@@ -32,6 +32,23 @@ At the end, review the diff and submit the branch as a PR.
 
 A pnpm migration diff you can review and turn into a PR.
 
+## Benchmarks
+
+In 10 local repo evals, `pnpm-migrate` saved an average of 418 seconds versus asking Claude Code to migrate manually.
+
+| Repo | Claude | pnpm-migrate | Saved |
+| --- | ---: | ---: | ---: |
+| `bpmn-js` | 411s | 50s | 361s |
+| `dayjs` | 362s | 24s | 338s |
+| `dompurify` | 817s | 97s | 720s |
+| `github-readme-stats` | 200s | 14s | 186s |
+| `html5-boilerplate` | 234s | 7s | 227s |
+| `jquery` | 591s | 15s | 576s |
+| `jsdoc` | 238s | 12s | 226s |
+| `lodash` | 447s | 21s | 426s |
+| `markdown-it` | 149s | 15s | 134s |
+| `uuid` | 999s | 15s | 984s |
+
 ## Supported Migration Steps
 
 - imports `package-lock.json` into `pnpm-lock.yaml`
