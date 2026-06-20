@@ -4,3 +4,8 @@ jsdoc	jsdoc/jsdoc	main	npm install	npm test	pnpm test	Large npm workspace repo; 
 dompurify	cure53/DOMPurify	main	npm ci	npm test	pnpm test	Popular single package with npm scripts in package.json and CI.
 markdown-it	markdown-it/markdown-it	master	npm ci	npm test	pnpm test	Mature package with smaller package surface and npm CI cache usage.
 bpmn-js	bpmn-io/bpmn-js	develop	npm ci	npm test	pnpm test	Build/test pipeline uses karma; useful browser/test complexity candidate.
+axios	axios/axios	v1.x	npm ci	npm test	pnpm test	Popular HTTP client with Vitest and smoke tests.
+dayjs	iamkun/dayjs	dev	npm ci	npm test	pnpm test	Popular date library with timezone-sensitive Jest tests.
+marked	markedjs/marked	master	npm ci	npm test	pnpm test	Markdown parser with docs, specs, UMD, CJS, and type tests.
+lodash	lodash/lodash	main	npm ci	npm test	pnpm test	Mature utility library with custom build/test scripts.
+reveal-js	hakimel/reveal.js	master	npm ci	npm test	pnpm test	Presentation framework with build and Node test runner.

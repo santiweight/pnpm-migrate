@@ -16,6 +16,7 @@ Usage:
 
 Runs one migration method against one target and records:
   - migration duration
+  - baseline install/test status
   - validation status
   - post-migration test status
   - changed file count
@@ -118,6 +119,13 @@ run_validation() {
   timed_run validate node "$ROOT/scripts/validate-migration.mjs" "$WORKTREE"
 }
 
+run_baseline() {
+  timed_run baseline-install bash -lc "$install_cmd" || true
+  timed_run baseline-test bash -lc "$baseline_cmd" || true
+  git -C "$WORKTREE" reset --hard "origin/$branch"
+  git -C "$WORKTREE" clean -fdx
+}
+
 run_post_test() {
   timed_run post-test bash -lc "$post_migrate_cmd"
 }
@@ -167,6 +175,7 @@ PROMPT
 }
 
 clone_target
+run_baseline
 
 case "$METHOD" in
   tool)

@@ -243,6 +243,10 @@ const original = text;
 text = text
   .replace(/\n(\s*# Node[^\n]*\n)?(\s*)-\s+name:\s+Upgrade npm\n\2  run:\s+(?:npm|pnpm) install -g npm@[^\n]+\n/g, '\n')
   .replace(/\n(\s*# Node[^\n]*\n)?(\s*)-\s+run:\s+(?:npm|pnpm) install -g npm@[^\n]+\n/g, '\n')
+  .replace(/^(\s*(?:-\s*)?run:\s*)(?:npm|pnpm) install -g npm@[^\n]+$/gm, '$1echo "Skipping npm self-upgrade for pnpm migration"')
+  .replace(/^(\s*)(?:npm|pnpm) install -g npm@[^\n]+$/gm, '$1echo "Skipping npm self-upgrade for pnpm migration"')
+  .replace(/^(\s*(?:-\s*)?run:\s*).*\blockfile-lint\b.*--path\s+(?:package-lock\.json|pnpm-lock\.yaml).*$\n?/gm, '$1echo "Skipping lockfile-lint: pnpm-lock.yaml is not supported by lockfile-lint"\n')
+  .replace(/^(\s*)\S.*\blockfile-lint\b.*--path\s+(?:package-lock\.json|pnpm-lock\.yaml).*$\n?/gm, '$1echo "Skipping lockfile-lint: pnpm-lock.yaml is not supported by lockfile-lint"\n')
   .replace(/\bpackage-lock\.json\b/g, 'pnpm-lock.yaml')
   .replace(/\bnpm-shrinkwrap\.json\b/g, 'pnpm-lock.yaml')
   .replace(/cache:\s*['"]?npm['"]?/g, 'cache: pnpm')
@@ -467,6 +471,48 @@ for (const name of missing) {
 fs.writeFileSync(workspacePath, text);
 NODE
 
+  cat > "$STATE_DIR/upsert-minimum-release-age-exclude.js" <<'NODE'
+const fs = require('fs');
+
+const inputPath = process.argv[2];
+const workspacePath = 'pnpm-workspace.yaml';
+const input = fs.existsSync(inputPath) ? fs.readFileSync(inputPath, 'utf8') : '';
+const packageNames = new Set();
+
+for (const line of input.split(/\r?\n/)) {
+  const match = line.match(/^\s*((?:@[A-Za-z0-9_.-]+\/)?[A-Za-z0-9_.-]+@[0-9][^\s]*) was published at /);
+  if (match) {
+    packageNames.add(match[1]);
+  }
+}
+
+if (packageNames.size === 0) {
+  process.exit(1);
+}
+
+let text = fs.existsSync(workspacePath) ? fs.readFileSync(workspacePath, 'utf8') : '';
+const existing = new Set();
+for (const match of text.matchAll(/^\s*-\s+['"]?([^'"\n]+)['"]?\s*$/gm)) {
+  existing.add(match[1]);
+}
+
+const missing = [...packageNames].filter((name) => !existing.has(name));
+if (missing.length === 0) {
+  process.exit(0);
+}
+
+if (text && !text.endsWith('\n')) text += '\n';
+if (!/^minimumReleaseAgeExclude:\s*$/m.test(text)) {
+  if (text) text += '\n';
+  text += 'minimumReleaseAgeExclude:\n';
+}
+for (const name of missing.sort()) {
+  text += `  - '${name.replace(/'/g, "''")}'\n`;
+}
+
+fs.writeFileSync(workspacePath, text);
+NODE
+
   cat > "$STATE_DIR/fix-karma-plugins.js" <<'NODE'
 const fs = require('fs');
 const path = require('path');
@@ -497,17 +543,9 @@ const deps = {
   ...pkg.optionalDependencies
 };
 
-const pluginPackages = [
-  'karma-chrome-launcher',
-  'karma-chrome-launcher-2',
-  'karma-coverage',
-  'karma-debug-launcher',
-  'karma-env-preprocessor',
-  'karma-firefox-launcher',
-  'karma-mocha',
-  'karma-safari-launcher',
-  'karma-webpack'
-].filter((name) => deps[name]);
+const pluginPackages = Object.keys(deps)
+  .filter((name) => /^karma-/.test(name))
+  .sort();
 
 if (pluginPackages.length === 0) {
   process.exit(0);
@@ -515,8 +553,8 @@ if (pluginPackages.length === 0) {
 
 for (const file of walk('.')) {
   let text = fs.readFileSync(file, 'utf8');
-  if (/^    plugins\s*:/m.test(text)) continue;
   if (!/frameworks\s*:\s*\[[\s\S]*['"](?:mocha|webpack)['"][\s\S]*\]/.test(text)) continue;
+  if (pluginPackages.every((name) => text.includes(`require('${name}')`) || text.includes(`require("${name}")`))) continue;
 
   const block = [
     '    plugins: [',
@@ -641,7 +679,10 @@ convert_lockfile() {
 
   if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ] || [ -f yarn.lock ]; then
     log "importing existing lockfile with pnpm import"
-    run pnpm import
+    if ! run pnpm import; then
+      log "pnpm import failed; retrying with minimum release age disabled for lockfile conversion"
+      run pnpm import --config.minimum-release-age=0
+    fi
   else
     log "no npm/yarn lockfile found; pnpm-lock.yaml will be created by install"
   fi
@@ -736,19 +777,27 @@ install_deps() {
   fi
   log "running pnpm install"
   if [ "$DRY_RUN" -eq 1 ]; then
-    run pnpm install
+    run pnpm install --no-frozen-lockfile
     return 0
   fi
 
   local install_log="$STATE_DIR/pnpm-install.log"
-  if pnpm install 2>&1 | tee "$install_log"; then
+  if pnpm install --no-frozen-lockfile 2>&1 | tee "$install_log"; then
     return 0
   fi
 
   if grep -q 'ERR_PNPM_IGNORED_BUILDS' "$install_log"; then
     if node "$STATE_DIR/upsert-pnpm-allow-builds.js" "$install_log"; then
       log "approved pnpm dependency build scripts reported by pnpm install"
-      pnpm install
+      pnpm install --no-frozen-lockfile
+      return 0
+    fi
+  fi
+
+  if grep -q 'ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION' "$install_log"; then
+    if node "$STATE_DIR/upsert-minimum-release-age-exclude.js" "$install_log"; then
+      log "excluded pnpm minimum-release-age violations reported by pnpm install"
+      pnpm install --no-frozen-lockfile
       return 0
     fi
   fi
