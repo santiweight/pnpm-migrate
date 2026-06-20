@@ -69,6 +69,8 @@ git_dirty=false
 | `markdown-it` | Pass | Pass | 15s | 6 |
 | `uuid` | Pass | Pass | 15s | 27 |
 
+Stability check: `20260620-022729-2` also passed all 10 targets from the same clean source commit.
+
 Current Claude comparison from earlier paired runs:
 
 | Repo | Claude result | pnpm-migrate result | Signal |
