@@ -1051,19 +1051,19 @@ install_deps() {
   fi
   log "running pnpm install"
   if [ "$DRY_RUN" -eq 1 ]; then
-    run pnpm install --no-frozen-lockfile
+    run pnpm install --no-frozen-lockfile --prefer-offline
     return 0
   fi
 
   local install_log="$STATE_DIR/pnpm-install.log"
-  if pnpm install --no-frozen-lockfile 2>&1 | tee "$install_log"; then
+  if pnpm install --no-frozen-lockfile --prefer-offline 2>&1 | tee "$install_log"; then
     return 0
   fi
 
   if grep -q 'ERR_PNPM_IGNORED_BUILDS' "$install_log"; then
     if node "$STATE_DIR/upsert-pnpm-allow-builds.js" "$install_log"; then
       log "approved pnpm dependency build scripts reported by pnpm install"
-      pnpm install --no-frozen-lockfile
+      pnpm install --no-frozen-lockfile --prefer-offline
       return 0
     fi
   fi
@@ -1071,7 +1071,7 @@ install_deps() {
   if grep -q 'ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION' "$install_log"; then
     if node "$STATE_DIR/upsert-minimum-release-age-exclude.js" "$install_log"; then
       log "excluded pnpm minimum-release-age violations reported by pnpm install"
-      pnpm install --no-frozen-lockfile
+      pnpm install --no-frozen-lockfile --prefer-offline
       return 0
     fi
   fi
