@@ -1,0 +1,11 @@
+{
+  "name": "npm-hoisted-import",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "node index.test.js"
+  },
+  "dependencies": {
+    "chalk": "^4.1.2"
+  }
+}

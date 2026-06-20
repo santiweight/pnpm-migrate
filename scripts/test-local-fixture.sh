@@ -36,4 +36,9 @@ cd "$TMP_DIR/npm-workspace"
 test -f pnpm-workspace.yaml
 grep -q 'packages/\\*' pnpm-workspace.yaml
 
+run_fixture npm-hoisted-import
+
+cd "$TMP_DIR/npm-hoisted-import"
+node -e "const p=require('./package.json'); if (!p.devDependencies?.['ansi-styles']) process.exit(1)"
+
 echo "local fixtures passed"

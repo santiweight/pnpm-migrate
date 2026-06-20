@@ -89,4 +89,5 @@ Recent eval failures added these deterministic checks:
 
 - `npm:<script>` shorthand in package scripts is rewritten to `pnpm:<script>`.
 - Dynamic CI commands such as `npm run ${{ matrix.NPM_SCRIPT }}` are rewritten to `pnpm ${{ matrix.NPM_SCRIPT }}`.
+- Scoped package invocations such as `npx @puppeteer/browsers ...` are rewritten to `pnpm dlx @puppeteer/browsers ...`.
 - Source imports hidden by npm's flatter install tree are promoted to direct dev dependencies when the imported package exists in `package-lock.json`.
