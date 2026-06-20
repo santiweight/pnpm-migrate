@@ -49,7 +49,7 @@ Current corrected local tool run:
 | `dompurify` | Pass | Pass | 213s | 8 |
 | `github-readme-stats` | Pass | Pass | 12s | 10 |
 | `html5-boilerplate` | Pass | Pass | 6s | 6 |
-| `jquery` | Pass | Pass | 16s | 11 |
+| `jquery` | Pass | Pass | 19s | 11 |
 | `jsdoc` | Pass | Pass | 11s | 13 |
 | `lodash` | Pass | Pass | 25s | 8 |
 | `markdown-it` | Pass | Pass | 15s | 5 |
@@ -63,6 +63,7 @@ Current Claude comparison from earlier paired runs:
 | `DOMPurify` | Pass, 817s, 14 changed files | Pass, 103s corrected run, 8 changed files | Tool is much faster and smaller. |
 | `bpmn-js` | Pass, 411s, 9 changed files | Pass, 52s corrected run, 9 changed files | Tool is much faster. |
 | `jsdoc` | Pass, 237s, 10 changed files | Pass, 58s corrected run, 10 changed files | Tool is much faster. |
+| `jquery` | Pass, 591s, 14 changed files | Pass, 19s, 11 changed files | Tool saved 572s and kept docs/release scope tighter. |
 
 Signal: `pnpm-migrate` is useful as the deterministic migration engine. Claude is better as an optional cleanup/review pass after the tool, not as the first migration step.
 
