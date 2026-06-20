@@ -572,6 +572,48 @@ for (const pkgPath of packageFiles) {
 process.exit(changed ? 0 : 0);
 NODE
 
+  cat > "$STATE_DIR/rewrite-markdown-npm-commands.js" <<'NODE'
+const fs = require('fs');
+const path = require('path');
+
+function walk(dir, files = []) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name === '.git' || entry.name === 'node_modules' || entry.name === '.pnpm-store') continue;
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      walk(full, files);
+    } else if (entry.name.endsWith('.md')) {
+      files.push(full);
+    }
+  }
+  return files;
+}
+
+function rewriteCommandText(text) {
+  return text
+    .replace(/\bnpm install --save-dev ([^\n`;&|]+)/g, (_, deps) => `pnpm add -D ${deps.trim()}`)
+    .replace(/\bnpm install -D ([^\n`;&|]+)/g, (_, deps) => `pnpm add -D ${deps.trim()}`)
+    .replace(/\bnpm install --save ([^\n`;&|]+)/g, (_, deps) => `pnpm add ${deps.trim()}`)
+    .replace(/\bnpm install -S ([^\n`;&|]+)/g, (_, deps) => `pnpm add ${deps.trim()}`)
+    .replace(/\bnpm install ([^\n`;&|]+)/g, (_, deps) => `pnpm add ${deps.trim()}`)
+    .replace(/\bnpm ci\b/g, 'pnpm install --frozen-lockfile')
+    .replace(/\bnpm install\b/g, 'pnpm install')
+    .replace(/\bnpm test\b/g, 'pnpm test')
+    .replace(/\bnpm run ([A-Za-z0-9:_-]+) --\s+/g, 'pnpm $1 ')
+    .replace(/\bnpm run ([A-Za-z0-9:_-]+)/g, 'pnpm $1')
+    .replace(/\bnpx\s+(@[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)/g, 'pnpm dlx $1')
+    .replace(/\bnpx\s+([^@\s][^\s`;&|]*)/g, 'pnpm dlx $1');
+}
+
+for (const file of walk('.')) {
+  const original = fs.readFileSync(file, 'utf8');
+  const next = rewriteCommandText(original);
+  if (next !== original) {
+    fs.writeFileSync(file, next);
+  }
+}
+NODE
+
   cat > "$STATE_DIR/find-remaining-npm.js" <<'NODE'
 const fs = require('fs');
 const path = process.argv[2];
@@ -906,6 +948,15 @@ repair_imported_transitive_dependencies() {
   node "$STATE_DIR/repair-imported-transitive-deps.js"
 }
 
+rewrite_markdown_npm_commands() {
+  log "rewriting obvious npm commands in Markdown docs"
+  if [ "$DRY_RUN" -eq 1 ]; then
+    printf '[dry-run] inspect Markdown docs\n'
+    return 0
+  fi
+  node "$STATE_DIR/rewrite-markdown-npm-commands.js"
+}
+
 remove_npm_lockfiles() {
   if [ -f package-lock.json ]; then
     log "removing package-lock.json"
@@ -1126,6 +1177,7 @@ main() {
   repair_node_types_dependency
   install_deps
   rewrite_ci_npm_commands
+  rewrite_markdown_npm_commands
   report_remaining_npm_commands
   run_agent
   run_verification

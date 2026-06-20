@@ -29,6 +29,13 @@ run_fixture npm-basic
 
 cd "$TMP_DIR/npm-basic"
 grep -q 'cache: pnpm' .github/workflows/ci.yml
+grep -q 'pnpm install' README.md
+grep -q 'pnpm build' README.md
+grep -q 'pnpm test' README.md
+grep -q 'pnpm dlx cowsay hello' README.md
+grep -q 'pnpm add npm-basic' README.md
+grep -q 'pnpm add -D npm-basic' README.md
+grep -q 'npm publish' README.md
 
 run_fixture npm-workspace
 
