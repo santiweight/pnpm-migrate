@@ -41,6 +41,7 @@ run_tool_eval() {
   METHODS="tool" \
     "$ROOT/scripts/eval-methods.sh"
   node "$ROOT/scripts/summarize-results.mjs" "$run_root/results.tsv" > "$run_root/summary.md"
+  node "$ROOT/scripts/assert-results-pass.mjs" --expect "$(awk -F'\t' 'NR > 1 {count++} END {print count + 0}' "$TARGETS_FILE")" "$run_root/results.tsv"
 }
 
 run_claude_eval() {

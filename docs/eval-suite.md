@@ -32,6 +32,12 @@ Summarize one or more result files:
 scripts/summarize-results.mjs .eval/clean-tool/results.tsv .eval/uuid-fix3/results.tsv
 ```
 
+Assert that a result file is fully green:
+
+```bash
+scripts/assert-results-pass.mjs --expect 10 .eval/overnight/20260620-011321-4/tool/results.tsv
+```
+
 Run the overnight loop until 9:00 AM:
 
 ```bash
