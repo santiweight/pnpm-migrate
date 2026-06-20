@@ -228,10 +228,27 @@ write_helpers() {
 const fs = require('fs');
 const version = process.argv[2];
 const path = 'package.json';
-const pkg = JSON.parse(fs.readFileSync(path, 'utf8'));
-if (!pkg.packageManager || /^npm@/.test(pkg.packageManager)) {
-  pkg.packageManager = `pnpm@${version}`;
-  fs.writeFileSync(path, `${JSON.stringify(pkg, null, 2)}\n`);
+const text = fs.readFileSync(path, 'utf8');
+const indent = text.match(/\n([ \t]+)"/)?.[1] || '  ';
+const pkg = JSON.parse(text);
+const packageManager = `pnpm@${version}`;
+if (pkg.packageManager && /^npm@/.test(pkg.packageManager)) {
+  pkg.packageManager = packageManager;
+  fs.writeFileSync(path, `${JSON.stringify(pkg, null, indent)}\n`);
+} else if (!pkg.packageManager) {
+  const next = {};
+  let inserted = false;
+  for (const [key, value] of Object.entries(pkg)) {
+    next[key] = value;
+    if (!inserted && (key === 'version' || key === 'name')) {
+      next.packageManager = packageManager;
+      inserted = true;
+    }
+  }
+  if (!inserted) {
+    next.packageManager = packageManager;
+  }
+  fs.writeFileSync(path, `${JSON.stringify(next, null, indent)}\n`);
 }
 NODE
 
@@ -391,6 +408,7 @@ for (const packagePath of walk('.')) {
       .replace(/\bnpx\s+([A-Za-z0-9:_-]+)/g, 'pnpm exec $1')
       .replace(/\bnpx\b/g, 'pnpm exec')
       .replace(/\bnpm link --workspaces\b/g, 'pnpm -r link')
+      .replace(/(^|[;&|]\s*)((?:cross-env\s+(?:\S+=\S+\s+)*)?)node_modules\/((?:@[^/\s]+\/)?[^/\s]+)\/bin\/([^\s&|;]+)/g, '$1$2node node_modules/$3/bin/$4')
       .replace(/\bnpm publish --workspaces\b/g, 'pnpm -r publish');
     if (next !== value) {
       scripts[name] = next.trimEnd();
@@ -399,7 +417,9 @@ for (const packagePath of walk('.')) {
   }
 
   if (changed) {
-    fs.writeFileSync(packagePath, `${JSON.stringify(pkg, null, 2)}\n`);
+    const text = fs.readFileSync(packagePath, 'utf8');
+    const indent = text.match(/\n([ \t]+)"/)?.[1] || '  ';
+    fs.writeFileSync(packagePath, `${JSON.stringify(pkg, null, indent)}\n`);
   }
 }
 NODE
@@ -409,7 +429,9 @@ const fs = require('fs');
 const path = require('path');
 
 const pkgPath = 'package.json';
-const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+const original = fs.readFileSync(pkgPath, 'utf8');
+const indent = original.match(/\n([ \t]+)"/)?.[1] || '  ';
+const pkg = JSON.parse(original);
 
 if (pkg.dependencies?.['@types/node'] || pkg.devDependencies?.['@types/node']) {
   process.exit(0);
@@ -450,7 +472,7 @@ if (!usesNodeTypes) {
 const major = process.versions.node.split('.')[0];
 pkg.devDependencies ||= {};
 pkg.devDependencies['@types/node'] = `^${major}.0.0`;
-fs.writeFileSync(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`);
+fs.writeFileSync(pkgPath, `${JSON.stringify(pkg, null, indent)}\n`);
 console.log(`package.json: added devDependency @types/node@^${major}.0.0`);
 NODE
 
@@ -532,8 +554,10 @@ let changed = false;
 
 for (const pkgPath of packageFiles) {
   let pkg;
+  let original;
   try {
-    pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+    original = fs.readFileSync(pkgPath, 'utf8');
+    pkg = JSON.parse(original);
   } catch {
     continue;
   }
@@ -568,7 +592,8 @@ for (const pkgPath of packageFiles) {
     }
   }
 
-  fs.writeFileSync(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`);
+  const indent = original.match(/\n([ \t]+)"/)?.[1] || '  ';
+  fs.writeFileSync(pkgPath, `${JSON.stringify(pkg, null, indent)}\n`);
 }
 
 process.exit(changed ? 0 : 0);
@@ -912,7 +937,9 @@ for (const record of packages) {
     record.pkg.devDependencies[name] = workspaces.get(name).version;
     console.log(`${record.file}: added devDependency ${name}`);
   }
-  fs.writeFileSync(record.file, `${JSON.stringify(record.pkg, null, 2)}\n`);
+  const original = fs.readFileSync(record.file, 'utf8');
+  const indent = original.match(/\n([ \t]+)"/)?.[1] || '  ';
+  fs.writeFileSync(record.file, `${JSON.stringify(record.pkg, null, indent)}\n`);
   changed = true;
 }
 

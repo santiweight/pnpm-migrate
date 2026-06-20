@@ -122,6 +122,12 @@ Current 10-repo Claude comparison:
 
 Signal: `pnpm-migrate` is useful as the deterministic migration engine. Claude is better as an optional cleanup/review pass after the tool, not as the first migration step.
 
+Out-of-sample check:
+
+| Repo | Claude migration | pnpm-migrate migration | Result |
+| --- | ---: | ---: | --- |
+| `moment` | 172s, 7 files | 23s, 6 files | Both passed; tool saved 149s after adding direct `node_modules/*/bin/*` script repair. |
+
 `Time saved` should be calculated as:
 
 ```text
