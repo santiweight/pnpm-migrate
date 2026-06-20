@@ -4,7 +4,7 @@ jsdoc	jsdoc/jsdoc	main	npm install	npm test	pnpm test	Large npm workspace repo; 
 dompurify	cure53/DOMPurify	main	npm ci	npm test	pnpm test	Popular single package with npm scripts in package.json and CI.
 markdown-it	markdown-it/markdown-it	master	npm ci	npm test	pnpm test	Mature package with smaller package surface and npm CI cache usage.
 bpmn-js	bpmn-io/bpmn-js	develop	npm ci	npm test	pnpm test	Build/test pipeline uses karma; useful browser/test complexity candidate.
-three-js	mrdoob/three.js	dev	npm ci	npm test	pnpm test	Large graphics library with lint, unit, addon, docs, and Puppeteer-based verification.
+jquery	jquery/jquery	main	npm ci	npm run test:jsdom	pnpm test:jsdom	Mature JS library with dynamic workflow scripts, build steps, and jsdom tests.
 dayjs	iamkun/dayjs	dev	npm ci	TZ=UTC npm test	TZ=UTC pnpm test	Popular date library with timezone-sensitive Jest tests pinned to UTC for fair local comparison.
 uuid	uuidjs/uuid	main	npm ci	npm test	pnpm test	Popular UUID library with build, docs, examples, and Node tests.
 lodash	lodash/lodash	main	npm ci	npm test	pnpm test	Mature utility library with custom build/test scripts.

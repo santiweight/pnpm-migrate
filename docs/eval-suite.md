@@ -44,16 +44,16 @@ Current corrected local tool run:
 
 | Repo | Baseline | pnpm-migrate result | Migration time | Changed files |
 | --- | --- | --- | ---: | ---: |
-| `bpmn-js` | Pass | Pass | 52s | 9 |
-| `dayjs` | Pass | Pass | 24s | 6 |
-| `dompurify` | Pass | Pass | 103s | 8 |
-| `github-readme-stats` | Pass | Pass | 82s | 10 |
-| `html5-boilerplate` | Pass | Pass | 40s | 6 |
-| `jsdoc` | Pass | Pass | 58s | 10 |
-| `lodash` | Pass | Pass | 21s | 8 |
-| `markdown-it` | Pass | Pass | 117s | 5 |
-| `uuid` | Pass | Pass | 19s | 15 |
-| `three-js` | Running | TBD | TBD | TBD |
+| `bpmn-js` | Pass | Pass | 51s | 9 |
+| `dayjs` | Pass | Pass | 23s | 6 |
+| `dompurify` | Pass | Pass | 213s | 8 |
+| `github-readme-stats` | Pass | Pass | 12s | 10 |
+| `html5-boilerplate` | Pass | Pass | 6s | 6 |
+| `jquery` | Pass | Pass | 16s | 11 |
+| `jsdoc` | Pass | Pass | 10s | 10 |
+| `lodash` | Pass | Pass | 25s | 8 |
+| `markdown-it` | Pass | Pass | 15s | 5 |
+| `uuid` | Pass | Pass | 17s | 15 |
 
 Current Claude comparison from earlier paired runs:
 
@@ -81,3 +81,12 @@ Rejected or unstable local targets are tracked separately from migration failure
 - `promptfoo`: npm baseline failed locally.
 - `reveal-js`: npm baseline install/test failed locally.
 - `anime`: npm baseline failed locally.
+- `three-js`: npm baseline failed locally before migration in the addon Puppeteer suite.
+
+## New Cases Covered
+
+Recent eval failures added these deterministic checks:
+
+- `npm:<script>` shorthand in package scripts is rewritten to `pnpm:<script>`.
+- Dynamic CI commands such as `npm run ${{ matrix.NPM_SCRIPT }}` are rewritten to `pnpm ${{ matrix.NPM_SCRIPT }}`.
+- Source imports hidden by npm's flatter install tree are promoted to direct dev dependencies when the imported package exists in `package-lock.json`.

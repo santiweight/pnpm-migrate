@@ -27,6 +27,7 @@ Evidence checked on 2026-06-18 with `gh api`, raw GitHub workflow files, and loc
 | `bpmn-io/bpmn-js` | Root `package.json` and `package-lock.json`; no root `pnpm-lock.yaml`; npm scripts in workflows; Karma tests. | Green after deterministic fixes: pnpm `allowBuilds`, explicit Karma plugins, and `npx` rewrite. |
 | `promptfoo/promptfoo` | Root `package.json` and `package-lock.json`; no root `pnpm-lock.yaml`; workspaces: `src/app`, `site`; npm workflow references. | Tests green but PR-blocked: pnpm post-test passed with 20,095 tests after adding missing direct `yaml`, but deep CI validation flags unsupported `lockfile-lint` usage against the removed npm lockfile. |
 | `jsdoc/jsdoc` | Root `package.json` and `package-lock.json`; no root `pnpm-lock.yaml`; large npm workspace repo. | Green: npm baseline install/test passed; migration validator passed; pnpm post-test passed after adding missing direct workspace dev dependencies exposed by pnpm isolation. |
+| `jquery/jquery` | Root `package.json` and `package-lock.json`; no root `pnpm-lock.yaml`; dynamic GitHub Actions matrix scripts and `concurrently` npm shorthand. | Green with `test:jsdom`: migration validator passed; pnpm post-test passed after adding direct `chalk` and `yargs` dev dependencies exposed by pnpm isolation. |
 
 ## First Five Attempted
 
@@ -47,6 +48,9 @@ The five candidates converge on the same migration shape:
 - CI has many simple `npm ci`, `npm test`, and `npm run <script>` commands.
 - Some workflows likely contain commands that need human/agent judgment, especially `npm publish`, `npm version`, and `npx`.
 - `actions/setup-node` cache settings should move from `npm` to `pnpm`.
+- Dynamic workflow commands such as `npm run ${{ matrix.NPM_SCRIPT }}` should be rewritten to `pnpm ${{ matrix.NPM_SCRIPT }}`.
+- Script-runner shorthands such as `npm:lint` should be rewritten to `pnpm:lint`.
+- Source imports that npm satisfied through transitive hoisting can need direct dev dependencies under pnpm.
 - The agent should receive a report of remaining risky npm/npx commands instead of assuming deterministic rewrites handled everything.
 
 This confirms the value prop: the deterministic script can do the repetitive package-manager conversion, while the agent focuses on repo-specific workflow and release details.

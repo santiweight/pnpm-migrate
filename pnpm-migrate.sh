@@ -260,6 +260,7 @@ text = text
   .replace(/\bnpm ci\b/g, 'pnpm install --frozen-lockfile')
   .replace(/\bnpm install\b/g, 'pnpm install')
   .replace(/\bnpm test\b/g, 'pnpm test')
+  .replace(/\bnpm run (\$\{\{[^}]+\}\})/g, 'pnpm $1')
   .replace(/\bnpm run ([A-Za-z0-9:_-]+) --\s+/g, 'pnpm $1 ')
   .replace(/\bnpm run ([A-Za-z0-9:_-]+)/g, 'pnpm $1')
   .replace(/\bnpm exec\b/g, 'pnpm exec')
@@ -372,6 +373,7 @@ for (const packagePath of walk('.')) {
       .replace(/\bnpm run ([A-Za-z0-9:_-]+) --prefix ([^\s&|;]+)\b/g, 'pnpm --dir $2 $1')
       .replace(/\bpnpm ([A-Za-z0-9:_-]+) --prefix ([^\s&|;]+)\b/g, 'pnpm --dir $2 $1')
       .replace(/\bnpm run ([A-Za-z0-9:_-]+) --workspaces\b/g, 'pnpm -r $1')
+      .replace(/\bnpm:([A-Za-z0-9:_*-]+)/g, 'pnpm:$1')
       .replace(/\bnpm run ([A-Za-z0-9:_-]+) --\s+/g, 'pnpm $1 ')
       .replace(/\bnpm run ([A-Za-z0-9:_-]+)\b/g, 'pnpm $1')
       .replace(/\bnpm test\b/g, 'pnpm test')
@@ -448,11 +450,126 @@ fs.writeFileSync(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`);
 console.log(`package.json: added devDependency @types/node@^${major}.0.0`);
 NODE
 
+  cat > "$STATE_DIR/repair-imported-transitive-deps.js" <<'NODE'
+const fs = require('fs');
+const path = require('path');
+const { builtinModules } = require('module');
+
+if (!fs.existsSync('package-lock.json')) {
+  process.exit(0);
+}
+
+const lock = JSON.parse(fs.readFileSync('package-lock.json', 'utf8'));
+const builtins = new Set([...builtinModules, ...builtinModules.map((name) => `node:${name}`)]);
+const skipDirs = new Set(['.git', 'node_modules', '.pnpm-store', 'dist', 'dist-module', 'coverage', 'tmp']);
+const extensions = new Set(['.cjs', '.cts', '.js', '.jsx', '.mjs', '.mts', '.ts', '.tsx']);
+
+function walk(dir, files = []) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (skipDirs.has(entry.name)) continue;
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      walk(full, files);
+    } else if (entry.name === 'package.json' || extensions.has(path.extname(entry.name))) {
+      files.push(full);
+    }
+  }
+  return files;
+}
+
+const packageFiles = walk('.').filter((file) => path.basename(file) === 'package.json');
+const packageDirs = new Set(packageFiles.map((file) => path.dirname(file)));
+
+function walkPackage(dir, files = []) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (skipDirs.has(entry.name)) continue;
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (full !== dir && packageDirs.has(full)) continue;
+      walkPackage(full, files);
+    } else if (extensions.has(path.extname(entry.name))) {
+      files.push(full);
+    }
+  }
+  return files;
+}
+
+function packageNameFromSpecifier(specifier) {
+  if (!specifier || specifier.startsWith('.') || specifier.startsWith('/') || specifier.startsWith('#')) return null;
+  if (builtins.has(specifier)) return null;
+  if (specifier.startsWith('@')) {
+    const parts = specifier.split('/');
+    return parts.length >= 2 ? `${parts[0]}/${parts[1]}` : null;
+  }
+  return specifier.split('/')[0];
+}
+
+function declared(pkg, name) {
+  return Boolean(
+    pkg.name === name ||
+      pkg.dependencies?.[name] ||
+      pkg.devDependencies?.[name] ||
+      pkg.peerDependencies?.[name] ||
+      pkg.optionalDependencies?.[name]
+  );
+}
+
+function lockedVersion(name) {
+  return lock.packages?.[`node_modules/${name}`]?.version || lock.dependencies?.[name]?.version || null;
+}
+
+const patterns = [
+  /\bfrom\s+['"]([^'"]+)['"]/g,
+  /\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
+  /\brequire\s*\(\s*['"]([^'"]+)['"]\s*\)/g
+];
+
+let changed = false;
+
+for (const pkgPath of packageFiles) {
+  const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+  const pkgDir = path.dirname(pkgPath);
+  const imports = new Set();
+
+  for (const file of walkPackage(pkgDir)) {
+    const text = fs.readFileSync(file, 'utf8');
+    for (const pattern of patterns) {
+      let match;
+      while ((match = pattern.exec(text))) {
+        const name = packageNameFromSpecifier(match[1]);
+        if (name) imports.add(name);
+      }
+    }
+  }
+
+  const missing = [...imports]
+    .filter((name) => !declared(pkg, name))
+    .map((name) => [name, lockedVersion(name)])
+    .filter(([, version]) => version)
+    .sort(([left], [right]) => left.localeCompare(right));
+
+  if (missing.length === 0) continue;
+
+  pkg.devDependencies ||= {};
+  for (const [name, version] of missing) {
+    if (!declared(pkg, name)) {
+      pkg.devDependencies[name] = `^${version}`;
+      console.log(`${pkgPath}: added devDependency ${name}@^${version} because source imports it`);
+      changed = true;
+    }
+  }
+
+  fs.writeFileSync(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`);
+}
+
+process.exit(changed ? 0 : 0);
+NODE
+
   cat > "$STATE_DIR/find-remaining-npm.js" <<'NODE'
 const fs = require('fs');
 const path = process.argv[2];
 const text = fs.readFileSync(path, 'utf8');
-const risky = /\b(npm\s+(ci|install|run|test|exec|publish|version)|npx)\b/g;
+const risky = /\b(npm\s+(ci|install|run|test|exec|publish|version)|npm:[A-Za-z0-9:_*-]+|npx)\b/g;
 let match;
 let found = false;
 const lines = text.split(/\r?\n/);
@@ -774,6 +891,14 @@ repair_node_types_dependency() {
   node "$STATE_DIR/repair-node-types-dependency.js"
 }
 
+repair_imported_transitive_dependencies() {
+  if [ "$DRY_RUN" -eq 1 ]; then
+    printf '[dry-run] inspect source imports for dependencies hidden by npm hoisting\n'
+    return 0
+  fi
+  node "$STATE_DIR/repair-imported-transitive-deps.js"
+}
+
 remove_npm_lockfiles() {
   if [ -f package-lock.json ]; then
     log "removing package-lock.json"
@@ -821,7 +946,7 @@ report_remaining_npm_commands() {
   done
   if [ -s "$report" ]; then
     log "remaining npm/npx commands need review:"
-    sed -n '1,80s/^/[pnpm-migrate]   /p' "$report"
+    sed -n '1,80s/^/[pnpm-migrate]   /p' "$report" || true
     local total
     total="$(wc -l < "$report" | tr -d ' ')"
     if [ "$total" -gt 80 ]; then
@@ -986,6 +1111,7 @@ main() {
   write_pnpm_workspace_if_needed
   set_package_manager
   convert_lockfile
+  repair_imported_transitive_dependencies
   remove_npm_lockfiles
   rewrite_package_scripts
   fix_karma_configs
