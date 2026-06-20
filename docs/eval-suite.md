@@ -40,20 +40,20 @@ scripts/overnight-loop.sh
 
 ## Scorecard
 
-Current corrected local tool run:
+Latest clean 10-target local tool run:
 
 | Repo | Baseline | pnpm-migrate result | Migration time | Changed files |
 | --- | --- | --- | ---: | ---: |
-| `bpmn-js` | Pass | Pass | 51s | 9 |
-| `dayjs` | Pass | Pass | 23s | 6 |
-| `dompurify` | Pass | Pass | 213s | 8 |
-| `github-readme-stats` | Pass | Pass | 12s | 10 |
+| `bpmn-js` | Pass | Pass | 52s | 9 |
+| `dayjs` | Pass | Pass | 22s | 6 |
+| `dompurify` | Pass | Pass | 97s | 9 |
+| `github-readme-stats` | Pass | Pass | 18s | 10 |
 | `html5-boilerplate` | Pass | Pass | 6s | 6 |
-| `jquery` | Pass | Pass | 19s | 11 |
-| `jsdoc` | Pass | Pass | 11s | 13 |
-| `lodash` | Pass | Pass | 25s | 8 |
-| `markdown-it` | Pass | Pass | 15s | 5 |
-| `uuid` | Pass | Pass | 17s | 15 |
+| `jquery` | Pass | Pass | 15s | 11 |
+| `jsdoc` | Pass | Pass | 9s | 13 |
+| `lodash` | Pass | Pass | 22s | 8 |
+| `markdown-it` | Pass | Pass | 13s | 5 |
+| `uuid` | Pass | Pass | 18s | 15 |
 
 Current Claude comparison from earlier paired runs:
 
