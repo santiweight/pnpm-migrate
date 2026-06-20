@@ -30,6 +30,24 @@ log() {
   printf '[overnight %s] %s\n' "$(timestamp)" "$*"
 }
 
+cleanup_eval_ports() {
+  command -v lsof >/dev/null 2>&1 || return 0
+
+  local port pid cwd
+  for port in 9877; do
+    while IFS= read -r pid; do
+      [ -n "$pid" ] || continue
+      cwd="$(lsof -a -p "$pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p' | head -1)"
+      case "$cwd" in
+        "$ROOT/.eval"/*|"$BASE_ROOT"/*)
+          log "stopping stale eval process $pid on port $port"
+          kill "$pid" 2>/dev/null || true
+          ;;
+      esac
+    done < <(lsof -tiTCP:"$port" -sTCP:LISTEN 2>/dev/null || true)
+  done
+}
+
 run_tool_eval() {
   local run_id="$1"
   local run_root="$BASE_ROOT/$run_id/tool"
@@ -79,6 +97,8 @@ main() {
     local run_id
     run_id="$(date '+%Y%m%d-%H%M%S')-$iteration"
     log "iteration $iteration"
+
+    cleanup_eval_ports
 
     if "$ROOT/scripts/test-local-fixture.sh"; then
       log "local fixtures passed"
