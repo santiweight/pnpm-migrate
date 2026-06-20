@@ -39,6 +39,6 @@ A pnpm migration diff you can review and turn into a PR.
 - adds `packageManager: pnpm@...`
 - creates `pnpm-workspace.yaml` when needed
 - rewrites common npm commands in package scripts, GitHub Actions, and Dockerfiles
-- rewrites obvious npm commands in Markdown docs
+- rewrites contributor-style npm commands in Markdown docs
 - runs install and the repo's main verification script
 - reports release/audit npm references for review

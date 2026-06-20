@@ -33,8 +33,8 @@ grep -q 'pnpm install' README.md
 grep -q 'pnpm build' README.md
 grep -q 'pnpm test' README.md
 grep -q 'pnpm dlx cowsay hello' README.md
-grep -q 'pnpm add npm-basic' README.md
-grep -q 'pnpm add -D npm-basic' README.md
+grep -q 'npm install npm-basic --save' README.md
+grep -q 'npm install --save-dev npm-basic' README.md
 grep -q 'npm publish' README.md
 
 run_fixture npm-workspace

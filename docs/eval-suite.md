@@ -98,4 +98,4 @@ Recent eval failures added these deterministic checks:
 - Dynamic CI commands such as `npm run ${{ matrix.NPM_SCRIPT }}` are rewritten to `pnpm ${{ matrix.NPM_SCRIPT }}`.
 - Scoped package invocations such as `npx @puppeteer/browsers ...` are rewritten to `pnpm dlx @puppeteer/browsers ...`.
 - Source imports hidden by npm's flatter install tree are promoted to direct dev dependencies when the imported package exists in `package-lock.json`.
-- Obvious Markdown command examples are rewritten, while release/audit commands remain warnings. A focused `dayjs` run reduced doc warnings to the release workflow's `npm audit signatures` line and still passed tests.
+- Contributor-style Markdown commands are rewritten, while package install examples and release/audit commands remain warnings for review.

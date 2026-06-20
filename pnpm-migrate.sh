@@ -591,13 +591,8 @@ function walk(dir, files = []) {
 
 function rewriteCommandText(text) {
   return text
-    .replace(/\bnpm install --save-dev ([^\n`;&|]+)/g, (_, deps) => `pnpm add -D ${deps.trim()}`)
-    .replace(/\bnpm install -D ([^\n`;&|]+)/g, (_, deps) => `pnpm add -D ${deps.trim()}`)
-    .replace(/\bnpm install --save ([^\n`;&|]+)/g, (_, deps) => `pnpm add ${deps.trim()}`)
-    .replace(/\bnpm install -S ([^\n`;&|]+)/g, (_, deps) => `pnpm add ${deps.trim()}`)
-    .replace(/\bnpm install ([^\n`;&|]+)/g, (_, deps) => `pnpm add ${deps.trim()}`)
     .replace(/\bnpm ci\b/g, 'pnpm install --frozen-lockfile')
-    .replace(/\bnpm install\b/g, 'pnpm install')
+    .replace(/\bnpm install(?=\s*(?:$|[#`;&|]))/g, 'pnpm install')
     .replace(/\bnpm test\b/g, 'pnpm test')
     .replace(/\bnpm run ([A-Za-z0-9:_-]+) --\s+/g, 'pnpm $1 ')
     .replace(/\bnpm run ([A-Za-z0-9:_-]+)/g, 'pnpm $1')
@@ -605,9 +600,36 @@ function rewriteCommandText(text) {
     .replace(/\bnpx\s+([^@\s][^\s`;&|]*)/g, 'pnpm dlx $1');
 }
 
+function shouldSkipFile(file) {
+  return /(?:^|\/)(?:CHANGELOG|CHANGES|HISTORY|RELEASES?)(?:\.[^.\/]+)?$/i.test(file);
+}
+
+function rewriteMarkdown(text) {
+  const lines = text.split(/(\r?\n)/);
+  let inFence = false;
+  for (let i = 0; i < lines.length; i += 2) {
+    const line = lines[i];
+    if (/^\s*```/.test(line)) {
+      inFence = !inFence;
+      continue;
+    }
+
+    const isCommandLine =
+      inFence ||
+      /^\s{4,}(?:npm|npx)\b/.test(line) ||
+      /^\s*(?:[-*]\s*)?(?:\$|>)?\s*(?:npm|npx)\b/.test(line);
+
+    if (isCommandLine) {
+      lines[i] = rewriteCommandText(line);
+    }
+  }
+  return lines.join('');
+}
+
 for (const file of walk('.')) {
+  if (shouldSkipFile(file)) continue;
   const original = fs.readFileSync(file, 'utf8');
-  const next = rewriteCommandText(original);
+  const next = rewriteMarkdown(original);
   if (next !== original) {
     fs.writeFileSync(file, next);
   }
