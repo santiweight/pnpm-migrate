@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-STATE_ROOT="${PNPM_MIGRATE_STATE_ROOT:-$HOME/.pnpm_migrate}"
-STATE_DIR="$STATE_ROOT/session-$$"
+STATE_ROOT="${PNPM_MIGRATE_STATE_ROOT:-/tmp}"
+STATE_DIR=""
 PROJECT_DIR="$PWD"
 AGENT="manual"
 AGENT_SET=0
@@ -43,7 +43,9 @@ fail() {
 }
 
 cleanup() {
-  rm -rf "$STATE_ROOT"
+  if [ -n "$STATE_DIR" ]; then
+    rm -rf "$STATE_DIR"
+  fi
 }
 
 run() {
@@ -98,8 +100,8 @@ parse_args() {
 }
 
 init_state() {
-  rm -rf "$STATE_ROOT"
-  mkdir -p "$STATE_DIR"
+  mkdir -p "$STATE_ROOT"
+  STATE_DIR="$(mktemp -d "$STATE_ROOT/pnpm-migrate.XXXXXX")"
   trap cleanup EXIT INT TERM
   printf '%s\n' "$PROJECT_DIR" > "$STATE_DIR/project_dir"
 }

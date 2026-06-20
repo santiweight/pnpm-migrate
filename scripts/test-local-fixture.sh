@@ -13,7 +13,9 @@ run_fixture() {
   cd "$project"
 
   npm install --package-lock-only >/dev/null
-  bash "$ROOT/pnpm-migrate.sh" --yes --skip-agent
+  local log="$TMP_DIR/$fixture.log"
+  bash "$ROOT/pnpm-migrate.sh" --yes --skip-agent 2>&1 | tee "$log"
+  grep -Eq '\[pnpm-migrate\] state directory: /tmp/pnpm-migrate\.' "$log"
 
   test -f pnpm-lock.yaml
   test ! -f package-lock.json
