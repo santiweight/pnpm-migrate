@@ -128,6 +128,45 @@ Out-of-sample check:
 | --- | ---: | ---: | --- |
 | `moment` | 172s, 7 files | 23s, 6 files | Both passed; tool saved 149s after adding direct `node_modules/*/bin/*` script repair. |
 
+## Batch 2 Expansion
+
+Ten additional npm-lock repos were evaluated on June 22, 2026. Five were added to the sample first; five were held out, evaluated in parallel, then promoted into the sample after passing.
+
+Sample set:
+
+| Repo | Baseline | pnpm-migrate result | Migration time | Changed files |
+| --- | ---: | --- | ---: | ---: |
+| `javascript-algorithms` | 31s | Pass | 76s | 26 |
+| `koa` | 16s | Pass | 27s | 6 |
+| `drawio-desktop` | 15s | Pass | 28s | 10 |
+| `leaflet` | 46s | Pass | 48s | 7 |
+| `thirty-three-js-concepts` | 23s | Pass | 18s | 12 |
+
+Holdout set:
+
+| Repo | Baseline | pnpm-migrate result | Migration time | Changed files |
+| --- | ---: | --- | ---: | ---: |
+| `drawdb` | 122s | Pass | 74s | 7 |
+| `impress` | 48s | Pass | 29s | 7 |
+| `monaco-editor` | 78s | Pass | 93s | 18 |
+| `remote-jobs` | 89s | Pass | 103s | 10 |
+| `wtfjs` | 36s | Pass | 26s | 5 |
+
+Batch 2 result: 10/10 passed. The first candidate sweep also exposed two deterministic gaps that were fixed before final holdout promotion:
+
+- `wtfjs`: repos that run Prettier over the whole tree need generated package-manager metadata formatted.
+- `bmad-method`: pnpm `allowBuilds` entries need double-quoted YAML keys for strict YAML lint rules.
+
+After promotion, the expanded 20-repo target file passed in repeat mode:
+
+```text
+PNPM_MIGRATE_EVAL_SKIP_BASELINE=1
+PNPM_MIGRATE_EVAL_MIRROR_ROOT=.eval/mirrors
+PNPM_MIGRATE_EVAL_JOBS=5
+```
+
+Result: `.eval/batch2-expanded-20-fast` passed 20/20 targets in 385 seconds wall time.
+
 `Time saved` should be calculated as:
 
 ```text

@@ -205,7 +205,9 @@ write_pnpm_workspace_if_needed() {
       {
         printf 'packages:\n'
         while IFS= read -r workspace; do
-          printf '  - %s\n' "$workspace"
+          workspace="${workspace//\\/\\\\}"
+          workspace="${workspace//\"/\\\"}"
+          printf '  - "%s"\n' "$workspace"
         done < "$workspace_file"
       } > pnpm-workspace.yaml
     fi
@@ -739,7 +741,7 @@ if (!/^allowBuilds:\s*$/m.test(text)) {
   text += 'allowBuilds:\n';
 }
 for (const name of missing) {
-  text += `  '${name.replace(/'/g, "''")}': true\n`;
+  text += `  "${name.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}": true\n`;
 }
 
 fs.writeFileSync(workspacePath, text);
@@ -1106,6 +1108,28 @@ install_deps() {
   return 1
 }
 
+format_metadata_if_needed() {
+  [ "$DRY_RUN" -eq 0 ] || return 0
+  [ -x node_modules/.bin/prettier ] || return 0
+
+  node <<'NODE' || return 0
+const fs = require('fs');
+const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+const scripts = Object.values(pkg.scripts || {}).filter((value) => typeof value === 'string');
+const checksAllFiles = scripts.some((script) => /\bprettier\b/.test(script) && /--check\b/.test(script));
+process.exit(checksAllFiles ? 0 : 1);
+NODE
+
+  local files=()
+  [ -f package.json ] && files+=(package.json)
+  [ -f pnpm-lock.yaml ] && files+=(pnpm-lock.yaml)
+  [ -f pnpm-workspace.yaml ] && files+=(pnpm-workspace.yaml)
+  [ "${#files[@]}" -gt 0 ] || return 0
+
+  log "formatting package manager metadata with repo Prettier"
+  pnpm exec prettier --write "${files[@]}" >/dev/null 2>&1 || true
+}
+
 repair_missing_verification_dependencies() {
   local log_path="$1"
   local packages
@@ -1233,6 +1257,7 @@ main() {
   repair_workspace_import_dependencies
   repair_node_types_dependency
   install_deps
+  format_metadata_if_needed
   rewrite_ci_npm_commands
   rewrite_markdown_npm_commands
   report_remaining_npm_commands

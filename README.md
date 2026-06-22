@@ -34,7 +34,7 @@ A pnpm migration diff you can review and turn into a PR.
 
 ## Benchmarks
 
-In 10 local repo evals, `pnpm-migrate` saved an average of 418 seconds versus asking Claude Code to migrate manually.
+In 10 local repo evals, `pnpm-migrate` was 16.5x faster than asking Claude Code to migrate manually.
 
 | Repo | Claude | pnpm-migrate | Saved |
 | --- | ---: | ---: | ---: |
@@ -48,6 +48,25 @@ In 10 local repo evals, `pnpm-migrate` saved an average of 418 seconds versus as
 | `lodash` | 447s | 21s | 426s |
 | `markdown-it` | 149s | 15s | 134s |
 | `uuid` | 999s | 15s | 984s |
+
+Fresh 10-repo expansion:
+
+| Repo | Set | Baseline | pnpm-migrate | Files | Result |
+| --- | --- | ---: | ---: | ---: | --- |
+| `javascript-algorithms` | sample | 31s | 76s | 26 | Pass |
+| `koa` | sample | 16s | 27s | 6 | Pass |
+| `drawio-desktop` | sample | 15s | 28s | 10 | Pass |
+| `leaflet` | sample | 46s | 48s | 7 | Pass |
+| `thirty-three-js-concepts` | sample | 23s | 18s | 12 | Pass |
+| `drawdb` | holdout | 122s | 74s | 7 | Pass |
+| `impress` | holdout | 48s | 29s | 7 | Pass |
+| `monaco-editor` | holdout | 78s | 93s | 18 | Pass |
+| `remote-jobs` | holdout | 89s | 103s | 10 | Pass |
+| `wtfjs` | holdout | 36s | 26s | 5 | Pass |
+
+The holdout set passed before being promoted into the sample.
+
+The full 20-repo sample now passes in repeat eval mode in 385 seconds wall time.
 
 ## Supported Migration Steps
 

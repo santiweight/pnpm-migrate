@@ -9,3 +9,13 @@ dayjs	iamkun/dayjs	dev	npm ci	TZ=UTC npm test	TZ=UTC pnpm test	Popular date libr
 uuid	uuidjs/uuid	main	npm ci	npm test	pnpm test	Popular UUID library with build, docs, examples, and Node tests.
 lodash	lodash/lodash	main	npm ci	npm test	pnpm test	Mature utility library with custom build/test scripts.
 github-readme-stats	anuraghazra/github-readme-stats	master	npm ci	npm test	pnpm test	Popular stats-card service with Jest coverage and lint/docs scripts.
+javascript-algorithms	trekhleb/javascript-algorithms	master	npm ci	npm test	pnpm test	Algorithms repo with Jest tests.
+koa	koajs/koa	master	npm ci	npm test	pnpm test	Node library with node:test suite.
+drawio-desktop	jgraph/drawio-desktop	dev	npm ci	npm test	pnpm test	Electron desktop app with node test smoke.
+leaflet	Leaflet/Leaflet	main	npm ci	npm run lint	pnpm lint	Map library lint target that avoids browser install.
+thirty-three-js-concepts	leonardomso/33-js-concepts	master	npm ci	npm test	pnpm test	Vitest examples repo.
+drawdb	drawdb-io/drawdb	main	npm ci	npm run build	pnpm build	Vite app build target.
+impress	impress/impress.js	master	npm ci	npm run lint	pnpm lint	Legacy presentation framework lint target.
+monaco-editor	microsoft/monaco-editor	main	npm ci	npm run test:grammars	pnpm test:grammars	Editor grammar tests.
+remote-jobs	remoteintech/remote-jobs	main	npm ci	npm run build	pnpm build	Eleventy/Pagefind static site build.
+wtfjs	denysdovhan/wtfjs	master	npm ci	npm test	pnpm test	Prettier-check docs repo.
