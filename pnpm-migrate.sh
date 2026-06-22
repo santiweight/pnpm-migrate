@@ -554,6 +554,19 @@ const builtins = new Set([...builtinModules, ...builtinModules.map((name) => `no
 const skipDirs = new Set(['.git', 'node_modules', '.pnpm-store', 'dist', 'dist-module', 'coverage', 'tmp']);
 const extensions = new Set(['.cjs', '.cts', '.js', '.jsx', '.mjs', '.mts', '.ts', '.tsx']);
 
+function walkPackageJsons(dir, files = []) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (skipDirs.has(entry.name)) continue;
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      walkPackageJsons(full, files);
+    } else if (entry.name === 'package.json') {
+      files.push(full);
+    }
+  }
+  return files;
+}
+
 function walk(dir, files = []) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     if (skipDirs.has(entry.name)) continue;
@@ -567,7 +580,7 @@ function walk(dir, files = []) {
   return files;
 }
 
-const packageFiles = walk('.').filter((file) => path.basename(file) === 'package.json');
+const packageFiles = walkPackageJsons('.');
 const packageDirs = new Set(packageFiles.map((file) => path.dirname(file)));
 
 function walkPackage(dir, files = []) {
@@ -915,6 +928,19 @@ const path = require('path');
 const skipDirs = new Set(['.git', 'node_modules', '.pnpm-store', 'dist', 'coverage']);
 const sourceExtensions = new Set(['.cjs', '.cts', '.js', '.jsx', '.mjs', '.mts', '.ts', '.tsx']);
 
+function walkPackageJsons(dir, files = []) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (skipDirs.has(entry.name)) continue;
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      walkPackageJsons(full, files);
+    } else if (entry.name === 'package.json') {
+      files.push(full);
+    }
+  }
+  return files;
+}
+
 function walk(dir, files = []) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     if (skipDirs.has(entry.name)) continue;
@@ -954,7 +980,7 @@ function declared(pkg, name) {
   );
 }
 
-const packageFiles = walk('.').filter((file) => path.basename(file) === 'package.json');
+const packageFiles = walkPackageJsons('.');
 const workspaces = new Map();
 const packages = [];
 
