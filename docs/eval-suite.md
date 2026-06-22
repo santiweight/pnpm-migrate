@@ -234,6 +234,7 @@ Batch 4 result: 10/10 promoted targets passed. The sweep exposed two more determ
 
 - `upscayl`: global installs should become `pnpm add -g <pkg>`, not `pnpm install -g <pkg>`.
 - `marked`: pnpm's exotic subdependency policy can combine with ignored build approvals; the install retry now handles both before continuing to CI and docs rewrites.
+- `ramda`: GitHub API tarball dependency specs can import without integrity; package specs are normalized to `github:<owner>/<repo>#<sha>` before `pnpm import`.
 
 Rejected or reserve candidates from this batch:
 
@@ -242,6 +243,20 @@ Rejected or reserve candidates from this batch:
 - `ant-design-pro`: migration hit ignored build approval before CI rewrites in the first sweep and remains a larger app candidate for a later focused pass.
 - `async` and `photoswipe`: npm baseline passed, migration validated, but selected post-migration command failed; they need focused script-level diagnosis before promotion.
 - `underscore` and `winston`: clean reserve holdouts, not promoted only to keep this batch to ten repos.
+
+## Speed Pass 1
+
+`PNPM_MIGRATE_TRUST_LOCKFILE=1` skips pnpm trust-policy verification during install after importing from the existing source lockfile. It remains opt-in because it trades supply-chain re-verification for speed.
+
+Focused repeat-mode sample:
+
+| Repo | Default recent migration | Trust-lockfile migration | Result |
+| --- | ---: | ---: | --- |
+| `bmad-method` | 43s | 21s | Pass |
+| `commander` | 7s | 8s | Pass |
+| `dompurify` | 59s | 13s | Pass |
+| `marked` | 19s | 19s | Pass |
+| `uuid` | 101s | 14s | Pass |
 
 `Time saved` should be calculated as:
 

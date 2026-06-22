@@ -14,6 +14,12 @@ curl -fsSL https://raw.githubusercontent.com/santiweight/pnpm-migrate/main/pnpm-
 
 (`pnpm-migrate` does not install any scripts. it is single run, with ephemeral `/tmp` state)
 
+For faster repeat/local migrations when you trust the source lockfile:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/santiweight/pnpm-migrate/main/pnpm-migrate.sh | PNPM_MIGRATE_TRUST_LOCKFILE=1 bash
+```
+
 ## Why?
 
 `pnpm` is a faster, production-ready alternative to `npm`.
@@ -108,6 +114,7 @@ The third expansion added global install rewrites and combined pnpm policy retri
 - removes npm lockfiles
 - adds `packageManager: pnpm@...`
 - creates `pnpm-workspace.yaml` when needed
+- normalizes GitHub tarball dependency specs before lockfile import
 - rewrites common npm commands in package scripts, GitHub Actions, and Dockerfiles
 - rewrites contributor-style npm commands in Markdown docs
 - runs install and the repo's main verification script

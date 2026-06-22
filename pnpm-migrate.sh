@@ -11,6 +11,7 @@ DRY_RUN=0
 SKIP_AGENT=0
 SKIP_INSTALL=0
 RUN_TESTS=1
+TRUST_LOCKFILE="${PNPM_MIGRATE_TRUST_LOCKFILE:-0}"
 
 usage() {
   cat <<'USAGE'
@@ -26,6 +27,7 @@ Options:
   --skip-agent            Do not run an agent after migration.
   --skip-install          Do not install dependencies.
   --no-tests              Do not run package verification scripts.
+  --trust-lockfile        Trust the generated pnpm lockfile during install.
   -h, --help              Show this help.
 
 One-line usage:
@@ -60,6 +62,22 @@ run() {
   fi
 }
 
+pnpm_install() {
+  local args=(install --no-frozen-lockfile --prefer-offline)
+  if [ "$TRUST_LOCKFILE" = "1" ]; then
+    args+=(--config.trust-lockfile=true)
+  fi
+  pnpm "${args[@]}" "$@"
+}
+
+dry_run_pnpm_install() {
+  local args=(pnpm install --no-frozen-lockfile --prefer-offline)
+  if [ "$TRUST_LOCKFILE" = "1" ]; then
+    args+=(--config.trust-lockfile=true)
+  fi
+  run "${args[@]}" "$@"
+}
+
 ask_yes_no() {
   local prompt="$1"
   if [ "$YES" -eq 1 ]; then
@@ -87,6 +105,7 @@ parse_args() {
       --skip-agent) SKIP_AGENT=1 ;;
       --skip-install) SKIP_INSTALL=1 ;;
       --no-tests) RUN_TESTS=0 ;;
+      --trust-lockfile) TRUST_LOCKFILE=1 ;;
       -h|--help)
         usage
         exit 0
@@ -225,6 +244,14 @@ set_package_manager() {
   node "$STATE_DIR/set-package-manager.js" "$pnpm_version"
 }
 
+normalize_github_tarball_dependencies() {
+  if [ "$DRY_RUN" -eq 1 ]; then
+    printf '[dry-run] inspect package.json for GitHub tarball dependency specs\n'
+    return 0
+  fi
+  node "$STATE_DIR/normalize-github-tarball-deps.js"
+}
+
 write_helpers() {
   cat > "$STATE_DIR/set-package-manager.js" <<'NODE'
 const fs = require('fs');
@@ -251,6 +278,35 @@ if (pkg.packageManager && /^npm@/.test(pkg.packageManager)) {
     next.packageManager = packageManager;
   }
   fs.writeFileSync(path, `${JSON.stringify(next, null, indent)}\n`);
+}
+NODE
+
+  cat > "$STATE_DIR/normalize-github-tarball-deps.js" <<'NODE'
+const fs = require('fs');
+
+const path = 'package.json';
+const original = fs.readFileSync(path, 'utf8');
+const indent = original.match(/\n([ \t]+)"/)?.[1] || '  ';
+const pkg = JSON.parse(original);
+const sections = ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies'];
+const tarballPattern = /^https:\/\/api\.github\.com\/repos\/([^/]+)\/([^/]+)\/tarball\/(.+)$/;
+let changed = false;
+
+for (const section of sections) {
+  const deps = pkg[section];
+  if (!deps) continue;
+  for (const [name, specifier] of Object.entries(deps)) {
+    if (typeof specifier !== 'string') continue;
+    const match = specifier.match(tarballPattern);
+    if (!match) continue;
+    deps[name] = `github:${match[1]}/${match[2]}#${match[3]}`;
+    console.log(`package.json: normalized GitHub tarball dependency ${name}`);
+    changed = true;
+  }
+}
+
+if (changed) {
+  fs.writeFileSync(path, `${JSON.stringify(pkg, null, indent)}\n`);
 }
 NODE
 
@@ -1091,19 +1147,19 @@ install_deps() {
   fi
   log "running pnpm install"
   if [ "$DRY_RUN" -eq 1 ]; then
-    run pnpm install --no-frozen-lockfile --prefer-offline
+    dry_run_pnpm_install
     return 0
   fi
 
   local install_log="$STATE_DIR/pnpm-install.log"
-  if pnpm install --no-frozen-lockfile --prefer-offline 2>&1 | tee "$install_log"; then
+  if pnpm_install 2>&1 | tee "$install_log"; then
     return 0
   fi
 
   if grep -q 'ERR_PNPM_IGNORED_BUILDS' "$install_log"; then
     if node "$STATE_DIR/upsert-pnpm-allow-builds.js" "$install_log"; then
       log "approved pnpm dependency build scripts reported by pnpm install"
-      pnpm install --no-frozen-lockfile --prefer-offline
+      pnpm_install
       return 0
     fi
   fi
@@ -1111,20 +1167,20 @@ install_deps() {
   if grep -q 'ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION' "$install_log"; then
     if node "$STATE_DIR/upsert-minimum-release-age-exclude.js" "$install_log"; then
       log "excluded pnpm minimum-release-age violations reported by pnpm install"
-      pnpm install --no-frozen-lockfile --prefer-offline
+      pnpm_install
       return 0
     fi
   fi
 
   if grep -q 'ERR_PNPM_EXOTIC_SUBDEP' "$install_log"; then
     log "retrying pnpm install with exotic subdependency policy disabled"
-    if pnpm install --no-frozen-lockfile --prefer-offline --config.block-exotic-subdeps=false 2>&1 | tee "$install_log"; then
+    if pnpm_install --config.block-exotic-subdeps=false 2>&1 | tee "$install_log"; then
       return 0
     fi
     if grep -q 'ERR_PNPM_IGNORED_BUILDS' "$install_log"; then
       if node "$STATE_DIR/upsert-pnpm-allow-builds.js" "$install_log"; then
         log "approved pnpm dependency build scripts reported by pnpm install"
-        pnpm install --no-frozen-lockfile --prefer-offline --config.block-exotic-subdeps=false
+        pnpm_install --config.block-exotic-subdeps=false
         return 0
       fi
     fi
@@ -1274,6 +1330,7 @@ main() {
 
   write_pnpm_workspace_if_needed
   set_package_manager
+  normalize_github_tarball_dependencies
   convert_lockfile
   repair_imported_transitive_dependencies
   remove_npm_lockfiles
