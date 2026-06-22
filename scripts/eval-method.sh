@@ -8,6 +8,8 @@ TIMEOUT_SECONDS="${PNPM_MIGRATE_EVAL_TIMEOUT_SECONDS:-300}"
 CLAUDE_PERMISSION_MODE="${PNPM_MIGRATE_CLAUDE_PERMISSION_MODE:-bypassPermissions}"
 ALLOW_BASELINE_FAILURE="${PNPM_MIGRATE_EVAL_ALLOW_BASELINE_FAILURE:-0}"
 SKIP_BASELINE="${PNPM_MIGRATE_EVAL_SKIP_BASELINE:-0}"
+SKIP_POST_TEST="${PNPM_MIGRATE_EVAL_SKIP_POST_TEST:-0}"
+SKIP_TOOL_INSTALL="${PNPM_MIGRATE_EVAL_SKIP_TOOL_INSTALL:-0}"
 MIRROR_ROOT="${PNPM_MIGRATE_EVAL_MIRROR_ROOT:-}"
 TARGET_ID="${1:-}"
 METHOD="${2:-}"
@@ -143,11 +145,20 @@ run_baseline() {
 }
 
 run_post_test() {
+  if [ "$SKIP_POST_TEST" -eq 1 ]; then
+    log "post-test skipped"
+    record post-test 0 0
+    return 0
+  fi
   timed_run post-test bash -lc "$post_migrate_cmd"
 }
 
 run_tool() {
-  timed_run migrate bash "$ROOT/pnpm-migrate.sh" --yes --agent manual --no-tests
+  local args=("$ROOT/pnpm-migrate.sh" --yes --agent manual --no-tests)
+  if [ "$SKIP_TOOL_INSTALL" -eq 1 ]; then
+    args+=(--skip-install)
+  fi
+  timed_run migrate bash "${args[@]}"
 }
 
 run_claude() {

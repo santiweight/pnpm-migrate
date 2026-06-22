@@ -318,6 +318,14 @@ After 60 repos, optimization work should use a tiered benchmark suite:
 
 The immediate speed targets are the batch-5 slow migrations: `opencli`, `p5`, `semantic-release`, `magicmirror`, `highlightjs`, `docsify`, `winston`, `mocha`, and `underscore`.
 
+Initial lockfile-tier baseline:
+
+```text
+scripts/benchmark-suite.sh lockfile
+```
+
+Result: `.eval/bench-lockfile` passed 9/9 targets in 218 seconds wall time. Migration phase average was 108.4 seconds; the slowest migration was `magicmirror` at 194 seconds. Because this tier uses `--skip-install`, the remaining cost is mostly lockfile import/resolution and deterministic file rewrites, not repo post-tests.
+
 `Time saved` should be calculated as:
 
 ```text
