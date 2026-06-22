@@ -44,6 +44,7 @@ run_fixture npm-workspace
 cd "$TMP_DIR/npm-workspace"
 test -f pnpm-workspace.yaml
 grep -q 'packages/\\*' pnpm-workspace.yaml
+node -e "const s=require('./package.json').scripts; if (s.lint !== 'pnpm -r build') process.exit(1); if (s.package !== 'pnpm --filter @fixture/a build') process.exit(1)"
 
 run_fixture npm-hoisted-import
 

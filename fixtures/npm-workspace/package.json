@@ -7,7 +7,8 @@
   ],
   "scripts": {
     "test": "node packages/a/index.test.js",
-    "build": "node packages/a/index.js"
+    "build": "node packages/a/index.js",
+    "lint": "npm run build -ws",
+    "package": "npm run build -w @fixture/a"
   }
 }
-

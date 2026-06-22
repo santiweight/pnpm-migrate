@@ -167,6 +167,45 @@ PNPM_MIGRATE_EVAL_JOBS=5
 
 Result: `.eval/batch2-expanded-20-fast` passed 20/20 targets in 385 seconds wall time.
 
+## Batch 3 Expansion
+
+Ten more npm-lock repos were evaluated on June 22, 2026. Five were added to the sample; five were held out, evaluated in parallel, then promoted after passing.
+
+Sample set:
+
+| Repo | Baseline | pnpm-migrate result | Migration time | Changed files |
+| --- | ---: | --- | ---: | ---: |
+| `bmad-method` | 147s | Pass | 157s | 65 |
+| `htmx` | 54s | Pass | 73s | 8 |
+| `iptv` | 105s | Pass | 177s | 8 |
+| `swiper` | 117s | Pass | 124s | 5 |
+| `videojs` | 133s | Pass | 127s | 8 |
+
+Holdout set:
+
+| Repo | Baseline | pnpm-migrate result | Migration time | Changed files |
+| --- | ---: | --- | ---: | ---: |
+| `codegraph` | 57s | Pass | 79s | 21 |
+| `hexo` | 56s | Pass | 99s | 11 |
+| `pixijs` | 335s | Pass | 126s | 16 |
+| `quill` | 221s | Pass | 77s | 9 |
+| `zx` | 50s | Pass | 108s | 14 |
+
+Batch 3 result: 10/10 passed. The candidate sweep exposed two more deterministic fixes:
+
+- `zx`: `npm:` package protocol references, such as Deno's `npm:types/node`, are not npm script shorthand and should not fail validation.
+- `quill`: npm workspace flags must be translated without recursion. `npm run lint -ws` now becomes `pnpm -r lint`, and `npm run build -w <workspace>` becomes `pnpm --filter <workspace> build`.
+
+After promotion, the expanded 30-repo target file passed in repeat mode:
+
+```text
+PNPM_MIGRATE_EVAL_SKIP_BASELINE=1
+PNPM_MIGRATE_EVAL_MIRROR_ROOT=.eval/mirrors
+PNPM_MIGRATE_EVAL_JOBS=5
+```
+
+Result: `.eval/batch3-expanded-30-fast` passed 30/30 targets in 747 seconds wall time.
+
 `Time saved` should be calculated as:
 
 ```text

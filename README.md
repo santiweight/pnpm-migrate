@@ -68,6 +68,23 @@ The holdout set passed before being promoted into the sample.
 
 The full 20-repo sample now passes in repeat eval mode in 385 seconds wall time.
 
+Second 10-repo expansion:
+
+| Repo | Set | Baseline | pnpm-migrate | Files | Result |
+| --- | --- | ---: | ---: | ---: | --- |
+| `bmad-method` | sample | 147s | 157s | 65 | Pass |
+| `htmx` | sample | 54s | 73s | 8 | Pass |
+| `iptv` | sample | 105s | 177s | 8 | Pass |
+| `swiper` | sample | 117s | 124s | 5 | Pass |
+| `videojs` | sample | 133s | 127s | 8 | Pass |
+| `codegraph` | holdout | 57s | 79s | 21 | Pass |
+| `hexo` | holdout | 56s | 99s | 11 | Pass |
+| `pixijs` | holdout | 335s | 126s | 16 | Pass |
+| `quill` | holdout | 221s | 77s | 9 | Pass |
+| `zx` | holdout | 50s | 108s | 14 | Pass |
+
+The target sample now covers 30 repos and passes repeat eval mode in 747 seconds wall time.
+
 ## Supported Migration Steps
 
 - imports `package-lock.json` into `pnpm-lock.yaml`

@@ -59,7 +59,8 @@ for (const lockfile of ['package-lock.json', 'npm-shrinkwrap.json']) {
   }
 }
 
-const hardNpmPattern = /\b(?:npm\s+(?:ci|install|run|test|start|exec)|npm:[A-Za-z0-9:_*-]+|npx)\b/;
+const hardNpmPattern = /\b(?:npm\s+(?:ci|install|run|test|start|exec)|npx)\b/;
+const npmScriptShorthandPattern = /(^|[\s'"(])npm:[A-Za-z0-9:_*-]+(?=$|[\s'")])/;
 const auditPattern = /\bnpm\s+audit\b/;
 const badPnpmPattern = /\bpnpm\s+(?:exec\s+-(?:y|yes)|install\s+-g|(?:exec|dlx)\s+(?:-[^\s]+\s+)*npm@?[^\s]*)\b|\binstall\/\b/;
 const removedLockfilePattern = /\b(?:package-lock\.json|npm-shrinkwrap\.json)\b/;
@@ -77,9 +78,9 @@ for (const file of walk(root).filter((entry) => path.basename(entry) === 'packag
     continue;
   }
   for (const [name, script] of Object.entries(pkg.scripts || {})) {
-    if (typeof script === 'string' && hardNpmPattern.test(script) && releaseScriptNamePattern.test(name)) {
+    if (typeof script === 'string' && (hardNpmPattern.test(script) || npmScriptShorthandPattern.test(script)) && releaseScriptNamePattern.test(name)) {
       warnings.push(`${rel} release script "${name}" contains npm/npx command requiring maintainer review: ${script}`);
-    } else if (typeof script === 'string' && hardNpmPattern.test(script)) {
+    } else if (typeof script === 'string' && (hardNpmPattern.test(script) || npmScriptShorthandPattern.test(script))) {
       errors.push(`${rel} script "${name}" still contains npm/npx command: ${script}`);
     }
     if (typeof script === 'string' && badPnpmPattern.test(script)) {
@@ -113,7 +114,7 @@ for (const file of commandFiles) {
       return;
     }
 
-    if (hardNpmPattern.test(line)) {
+    if (hardNpmPattern.test(line) || npmScriptShorthandPattern.test(line)) {
       errors.push(`${rel}:${index + 1} still contains npm/npx command: ${line.trim()}`);
     } else if (badPnpmPattern.test(line)) {
       errors.push(`${rel}:${index + 1} contains suspicious pnpm rewrite: ${line.trim()}`);
@@ -144,7 +145,7 @@ for (const file of proseFiles) {
   const rel = relative(file);
   const lines = fs.readFileSync(file, 'utf8').split(/\r?\n/);
   lines.forEach((line, index) => {
-    if (hardNpmPattern.test(line) || publishPattern.test(line)) {
+    if (hardNpmPattern.test(line) || npmScriptShorthandPattern.test(line) || publishPattern.test(line)) {
       warnings.push(`${rel}:${index + 1} contains npm wording requiring doc review: ${line.trim()}`);
     }
   });

@@ -19,3 +19,13 @@ impress	impress/impress.js	master	npm ci	npm run lint	pnpm lint	Legacy presentat
 monaco-editor	microsoft/monaco-editor	main	npm ci	npm run test:grammars	pnpm test:grammars	Editor grammar tests.
 remote-jobs	remoteintech/remote-jobs	main	npm ci	npm run build	pnpm build	Eleventy/Pagefind static site build.
 wtfjs	denysdovhan/wtfjs	master	npm ci	npm test	pnpm test	Prettier-check docs repo.
+bmad-method	bmad-code-org/BMAD-METHOD	main	npm ci	npm test	pnpm test	Docs/tooling repo with strict format checks.
+htmx	bigskysoftware/htmx	master	npm ci	npm run lint	pnpm lint	Library lint target avoiding browser install.
+iptv	iptv-org/iptv	master	npm ci	npm test	pnpm test	Playlist repo with Jest tests and postinstall script.
+swiper	nolimits4web/swiper	master	npm ci	npm run validate	pnpm validate	UI library validate script.
+videojs	videojs/video.js	main	npm ci	npm run lint	pnpm lint	Video player lint target.
+zx	google/zx	main	npm ci	npm run fmt:check	pnpm fmt:check	CLI repo with Deno npm: protocol validator case.
+codegraph	colbymchenry/codegraph	main	npm ci	npm run build	pnpm build	TypeScript CLI build target.
+hexo	hexojs/hexo	master	npm ci	npm run build	pnpm build	Blog framework build target.
+pixijs	pixijs/pixijs	dev	npm ci	npm run test:lint	pnpm test:lint	Rendering library lint target.
+quill	slab/quill	main	npm ci	npm run lint	pnpm lint	Workspace editor lint target.
