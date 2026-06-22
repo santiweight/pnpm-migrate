@@ -278,6 +278,7 @@ text = text
   .replace(/\bpnpm exec @biomejs\/biome\b/g, 'pnpm exec biome')
   .replace(/\bnpx\s+([^@\s][^\s]*@[^\s]+)/g, 'pnpm dlx $1')
   .replace(/\bnpm ci\b/g, 'pnpm install --frozen-lockfile')
+  .replace(/\bnpm install -g ([^\s&|;]+)/g, 'pnpm add -g $1')
   .replace(/\bnpm install\b/g, 'pnpm install')
   .replace(/\bnpm test\b/g, 'pnpm test')
   .replace(/\bnpm start\b/g, 'pnpm start')
@@ -399,6 +400,7 @@ for (const packagePath of walk('.')) {
       .replace(/\bpnpm ([A-Za-z0-9:_-]+)\s+(?:--workspace|-w)\s+([^\s&|;]+)/g, 'pnpm --filter $2 $1')
       .replace(/\bnpm run ([A-Za-z0-9:_-]+) --workspaces\b/g, 'pnpm -r $1')
       .replace(/\bnpm:([A-Za-z0-9:_*-]+)/g, 'pnpm:$1')
+      .replace(/\bnpm install -g ([^\s&|;]+)/g, 'pnpm add -g $1')
       .replace(/\bnpm run ([A-Za-z0-9:_-]+) --\s+/g, 'pnpm $1 ')
       .replace(/\bnpm run ([A-Za-z0-9:_-]+)\b/g, 'pnpm $1')
       .replace(/\bnpm test\b/g, 'pnpm test')
@@ -961,10 +963,15 @@ convert_lockfile() {
 
   if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ] || [ -f yarn.lock ]; then
     log "importing existing lockfile with pnpm import"
-    if ! run pnpm import; then
-      log "pnpm import failed; retrying with minimum release age disabled for lockfile conversion"
-      run pnpm import --config.minimum-release-age=0
+    if run pnpm import; then
+      return 0
     fi
+    log "pnpm import failed; retrying with minimum release age disabled for lockfile conversion"
+    if run pnpm import --config.minimum-release-age=0; then
+      return 0
+    fi
+    log "pnpm import failed; retrying with exotic subdependency policy disabled for lockfile conversion"
+    run pnpm import --config.minimum-release-age=0 --config.block-exotic-subdeps=false
   else
     log "no npm/yarn lockfile found; pnpm-lock.yaml will be created by install"
   fi
@@ -1106,6 +1113,20 @@ install_deps() {
       log "excluded pnpm minimum-release-age violations reported by pnpm install"
       pnpm install --no-frozen-lockfile --prefer-offline
       return 0
+    fi
+  fi
+
+  if grep -q 'ERR_PNPM_EXOTIC_SUBDEP' "$install_log"; then
+    log "retrying pnpm install with exotic subdependency policy disabled"
+    if pnpm install --no-frozen-lockfile --prefer-offline --config.block-exotic-subdeps=false 2>&1 | tee "$install_log"; then
+      return 0
+    fi
+    if grep -q 'ERR_PNPM_IGNORED_BUILDS' "$install_log"; then
+      if node "$STATE_DIR/upsert-pnpm-allow-builds.js" "$install_log"; then
+        log "approved pnpm dependency build scripts reported by pnpm install"
+        pnpm install --no-frozen-lockfile --prefer-offline --config.block-exotic-subdeps=false
+        return 0
+      fi
     fi
   fi
 

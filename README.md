@@ -85,6 +85,23 @@ Second 10-repo expansion:
 
 The target sample now covers 30 repos and passes repeat eval mode in 747 seconds wall time.
 
+Third 10-repo expansion:
+
+| Repo | Set | Baseline | pnpm-migrate | Files | Result |
+| --- | --- | ---: | ---: | ---: | --- |
+| `tesseract` | sample | 9s | 18s | 6 | Pass |
+| `moment` | sample | 29s | 17s | 6 | Pass |
+| `lerna` | sample | 17s | 80s | 27 | Pass |
+| `upscayl` | sample | 6s | 33s | 7 | Pass |
+| `marked` | sample | 4s | 15s | 6 | Pass |
+| `commander` | holdout | 13s | 29s | 6 | Pass |
+| `backbone` | holdout | 2s | 5s | 4 | Pass |
+| `cheerio` | holdout | 26s | 75s | 10 | Pass |
+| `nodemon` | holdout | 3s | 60s | 9 | Pass |
+| `ramda` | holdout | 14s | 62s | 7 | Pass |
+
+The third expansion added global install rewrites and combined pnpm policy retries for exotic subdependencies plus ignored build approvals.
+
 ## Supported Migration Steps
 
 - imports `package-lock.json` into `pnpm-lock.yaml`

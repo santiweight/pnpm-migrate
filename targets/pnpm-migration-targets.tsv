@@ -29,3 +29,13 @@ codegraph	colbymchenry/codegraph	main	npm ci	npm run build	pnpm build	TypeScript
 hexo	hexojs/hexo	master	npm ci	npm run build	pnpm build	Blog framework build target.
 pixijs	pixijs/pixijs	dev	npm ci	npm run test:lint	pnpm test:lint	Rendering library lint target.
 quill	slab/quill	main	npm ci	npm run lint	pnpm lint	Workspace editor lint target.
+tesseract	naptha/tesseract.js	master	npm ci	npm run lint	pnpm lint	OCR library lint target.
+moment	moment/moment	develop	npm ci	npm test	pnpm test	Date library known out-of-sample test target.
+lerna	lerna/lerna	main	npm ci	npm run format:check	pnpm format:check	Monorepo tool format check target.
+upscayl	upscayl/upscayl	main	npm ci	npm run tsc	pnpm tsc	Electron app TypeScript compile target.
+marked	markedjs/marked	master	npm ci	npm run build	pnpm build	Markdown parser build target.
+commander	tj/commander.js	master	npm ci	npm run check	pnpm check	CLI library full check target.
+backbone	jashkenas/backbone	master	npm ci	npm run lint	pnpm lint	Backbone lint target.
+cheerio	cheeriojs/cheerio	main	npm ci	npm run lint:ts	pnpm lint:ts	Cheerio TypeScript lint target.
+nodemon	remy/nodemon	main	npm ci	npm run lint	pnpm lint	Nodemon lint target.
+ramda	ramda/ramda	master	npm ci	npm run lint	pnpm lint	Ramda lint target.

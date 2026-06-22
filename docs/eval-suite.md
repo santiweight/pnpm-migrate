@@ -206,6 +206,43 @@ PNPM_MIGRATE_EVAL_JOBS=5
 
 Result: `.eval/batch3-expanded-30-fast` passed 30/30 targets in 747 seconds wall time.
 
+## Batch 4 Expansion
+
+Ten more npm-lock repos were evaluated on June 22, 2026. The first five passing repos were added to the sample; a separate holdout pool was evaluated in parallel, then five clean holdouts were promoted.
+
+Sample set:
+
+| Repo | Baseline | pnpm-migrate result | Migration time | Changed files |
+| --- | ---: | --- | ---: | ---: |
+| `tesseract` | 9s | Pass | 18s | 6 |
+| `moment` | 29s | Pass | 17s | 6 |
+| `lerna` | 17s | Pass | 80s | 27 |
+| `upscayl` | 6s | Pass | 33s | 7 |
+| `marked` | 4s | Pass | 15s | 6 |
+
+Holdout set:
+
+| Repo | Baseline | pnpm-migrate result | Migration time | Changed files |
+| --- | ---: | --- | ---: | ---: |
+| `commander` | 13s | Pass | 29s | 6 |
+| `backbone` | 2s | Pass | 5s | 4 |
+| `cheerio` | 26s | Pass | 75s | 10 |
+| `nodemon` | 3s | Pass | 60s | 9 |
+| `ramda` | 14s | Pass | 62s | 7 |
+
+Batch 4 result: 10/10 promoted targets passed. The sweep exposed two more deterministic fixes:
+
+- `upscayl`: global installs should become `pnpm add -g <pkg>`, not `pnpm install -g <pkg>`.
+- `marked`: pnpm's exotic subdependency policy can combine with ignored build approvals; the install retry now handles both before continuing to CI and docs rewrites.
+
+Rejected or reserve candidates from this batch:
+
+- `awesome-design-tools`, `preact`, and `react-bits`: npm baseline command failed locally before migration.
+- `bruno`: migration exposed an unpublished local package/version mismatch, so it needs repo-specific workspace policy work.
+- `ant-design-pro`: migration hit ignored build approval before CI rewrites in the first sweep and remains a larger app candidate for a later focused pass.
+- `async` and `photoswipe`: npm baseline passed, migration validated, but selected post-migration command failed; they need focused script-level diagnosis before promotion.
+- `underscore` and `winston`: clean reserve holdouts, not promoted only to keep this batch to ten repos.
+
 `Time saved` should be calculated as:
 
 ```text
