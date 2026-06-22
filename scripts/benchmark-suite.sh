@@ -28,6 +28,9 @@ case "$TIER" in
   fixture)
     "$ROOT/scripts/test-local-fixture.sh"
     ;;
+  comparison)
+    "$ROOT/scripts/compare-methods.sh"
+    ;;
   lockfile)
     run_eval lockfile "opencli p5 semantic-release magicmirror highlightjs docsify winston mocha underscore" 1 1
     ;;
@@ -43,10 +46,11 @@ case "$TIER" in
   *)
     cat >&2 <<'USAGE'
 Usage:
-  scripts/benchmark-suite.sh <fixture|lockfile|phase|canary|full>
+  scripts/benchmark-suite.sh <fixture|comparison|lockfile|phase|canary|full>
 
 Tiers:
   fixture  Fast local deterministic fixtures.
+  comparison Isolated Claude-vs-tool baseline comparison.
   lockfile Deterministic migration+validation without pnpm install.
   phase    Install-inclusive migration+validation on slow targets.
   canary   Representative post-test-enabled sample.

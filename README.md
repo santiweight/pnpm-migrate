@@ -42,6 +42,12 @@ A pnpm migration diff you can review and turn into a PR.
 
 In 10 local repo evals, `pnpm-migrate` was 16.5x faster than asking Claude Code to migrate manually.
 
+Reproduce the Claude-vs-tool baseline:
+
+```bash
+scripts/compare-methods.sh
+```
+
 | Repo | Claude | pnpm-migrate | Saved |
 | --- | ---: | ---: | ---: |
 | `bpmn-js` | 411s | 50s | 361s |

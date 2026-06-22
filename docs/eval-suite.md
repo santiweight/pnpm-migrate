@@ -7,6 +7,45 @@ The eval compares two migration methods against the same target repos:
 
 Each run records baseline install/test, migration, validation, and post-migration test phases.
 
+## Baseline Contract
+
+Every comparable run uses the same deterministic contract:
+
+1. Clone a fresh isolated worktree for each method.
+2. Run the target repo's npm baseline install command.
+3. Run the target repo's npm baseline verification command.
+4. Reset the worktree back to the target branch.
+5. Run exactly one migration method: `tool` or `claude`.
+6. Run `scripts/validate-migration.mjs` against the migrated tree.
+7. Run the target repo's pnpm post-migration verification command.
+
+A method only passes when the baseline, migration command, migration validator, and post-migration verification command all pass.
+
+Run the standardized Claude-vs-tool comparison:
+
+```bash
+scripts/compare-methods.sh
+```
+
+Limit it to a smaller sample while developing:
+
+```bash
+TARGETS="uuid moment" scripts/compare-methods.sh
+```
+
+The comparison writes:
+
+```text
+.eval/comparisons/<run-id>/results.tsv
+.eval/comparisons/<run-id>/summary.md
+```
+
+Re-summarize or assert a previous comparison:
+
+```bash
+scripts/summarize-comparison.mjs --assert-green .eval/comparisons/<run-id>/results.tsv
+```
+
 Run one target:
 
 ```bash
