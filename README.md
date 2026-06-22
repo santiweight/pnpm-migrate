@@ -110,6 +110,33 @@ The third expansion added global install rewrites and combined pnpm policy retri
 
 Fast repeat mode with `PNPM_MIGRATE_TRUST_LOCKFILE=1` passed all 40 targets in 233 seconds wall time. Migration phase average: 14.5s per repo.
 
+Fourth expansion to 60 repos:
+
+| Repo | Set | Baseline | pnpm-migrate | Files | Result |
+| --- | --- | ---: | ---: | ---: | --- |
+| `algorithms-js` | sample | 6s | 11s | 8 | Pass |
+| `docsify` | sample | 7s | 126s | 12 | Pass |
+| `heroicons` | sample | 6s | 46s | 7 | Pass |
+| `highlightjs` | sample | 19s | 127s | 11 | Pass |
+| `html2canvas` | sample | 4s | 41s | 10 | Pass |
+| `jspdf` | sample | 9s | 30s | 9 | Pass |
+| `mocha` | sample | 59s | 112s | 13 | Pass |
+| `nginxconfig` | sample | 13s | 90s | 8 | Pass |
+| `pure-css` | sample | 10s | 58s | 9 | Pass |
+| `sortable` | sample | 56s | 92s | 5 | Pass |
+| `underscore` | holdout | 15s | 106s | 6 | Pass |
+| `winston` | holdout | 19s | 117s | 6 | Pass |
+| `layui` | holdout | 7s | 27s | 9 | Pass |
+| `modernizr` | holdout | 10s | 26s | 17 | Pass |
+| `node-red` | holdout | 6s | 26s | 7 | Pass |
+| `claude-hud` | holdout | 17s | 28s | 14 | Pass |
+| `magicmirror` | holdout | 50s | 321s | 8 | Pass |
+| `opencli` | holdout | 13s | 594s | 33 | Pass |
+| `p5` | holdout | 74s | 444s | 53 | Pass |
+| `semantic-release` | holdout | 128s | 435s | 7 | Pass |
+
+The target sample now covers 60 repos. The slowest batch-5 migrations are the benchmark focus for the next speed pass.
+
 ## Supported Migration Steps
 
 - imports `package-lock.json` into `pnpm-lock.yaml`

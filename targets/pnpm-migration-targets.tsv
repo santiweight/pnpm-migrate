@@ -39,3 +39,23 @@ backbone	jashkenas/backbone	master	npm ci	npm run lint	pnpm lint	Backbone lint t
 cheerio	cheeriojs/cheerio	main	npm ci	npm run lint:ts	pnpm lint:ts	Cheerio TypeScript lint target.
 nodemon	remy/nodemon	main	npm ci	npm run lint	pnpm lint	Nodemon lint target.
 ramda	ramda/ramda	master	npm ci	npm run lint	pnpm lint	Ramda lint target.
+algorithms-js	TheAlgorithms/JavaScript	master	npm ci	npm run check-style	pnpm check-style	Algorithms style target.
+docsify	docsifyjs/docsify	develop	npm ci	npm run lint	pnpm lint	Docsify lint target.
+heroicons	tailwindlabs/heroicons	master	npm ci	npm run lint	pnpm lint	Icon library lint target.
+highlightjs	highlightjs/highlight.js	main	npm ci	npm run lint	pnpm lint	Syntax highlighter lint target.
+html2canvas	niklasvh/html2canvas	master	npm ci	npm run lint	pnpm lint	HTML canvas renderer lint target.
+jspdf	parallax/jsPDF	master	npm ci	npm run lint	pnpm lint	PDF library lint target.
+mocha	mochajs/mocha	main	npm ci	npm run lint:code	pnpm lint:code	Mocha code lint target.
+nginxconfig	digitalocean/nginxconfig.io	master	npm ci	npm run test:eslint	pnpm test:eslint	NGINX config lint target.
+pure-css	pure-css/pure	main	npm ci	npm run lint	pnpm lint	CSS framework lint target.
+sortable	SortableJS/Sortable	master	npm ci	npm run build	pnpm build	Sortable build target.
+underscore	jashkenas/underscore	master	npm ci	npm run lint	pnpm lint	Underscore lint target.
+winston	winstonjs/winston	master	npm ci	npm run lint	pnpm lint	Winston lint target.
+layui	layui/layui	main	npm ci	npm run lint	pnpm lint	UI library lint target.
+modernizr	Modernizr/Modernizr	master	npm ci	npm run lint	pnpm lint	Modernizr lint target.
+node-red	node-red/node-red	main	npm ci	npm run lint	pnpm lint	Node-RED lint target.
+claude-hud	jarrodwatts/claude-hud	main	npm ci	npm run build	pnpm build	Claude Code plugin build target.
+magicmirror	MagicMirrorOrg/MagicMirror	master	npm ci	npm run lint:js	pnpm lint:js	Smart mirror app JS lint target.
+opencli	jackwener/OpenCLI	main	npm ci	npm run typecheck	pnpm typecheck	CLI tool typecheck target.
+p5	processing/p5.js	main	npm ci	npm run lint	pnpm lint	Creative coding library lint target.
+semantic-release	semantic-release/semantic-release	master	npm ci	npm run test:unit	pnpm test:unit	Release tool unit-test target.

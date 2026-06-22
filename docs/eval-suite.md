@@ -269,6 +269,55 @@ PNPM_MIGRATE_EVAL_JOBS=5
 
 Result: `.eval/batch4-expanded-40-fast-trust` passed 40/40 targets in 233 seconds wall time. Migration phase average was 14.5 seconds per repo; the slowest migration phase was `lerna` at 43 seconds.
 
+## Batch 5 Expansion
+
+Twenty more npm-lock repos were evaluated on June 22, 2026, bringing the target file to 60 repos. Ten were treated as the sample set and ten as holdout-promoted repos.
+
+Sample set:
+
+| Repo | Baseline | pnpm-migrate result | Migration time | Changed files |
+| --- | ---: | --- | ---: | ---: |
+| `algorithms-js` | 6s | Pass | 11s | 8 |
+| `docsify` | 7s | Pass | 126s | 12 |
+| `heroicons` | 6s | Pass | 46s | 7 |
+| `highlightjs` | 19s | Pass | 127s | 11 |
+| `html2canvas` | 4s | Pass | 41s | 10 |
+| `jspdf` | 9s | Pass | 30s | 9 |
+| `mocha` | 59s | Pass | 112s | 13 |
+| `nginxconfig` | 13s | Pass | 90s | 8 |
+| `pure-css` | 10s | Pass | 58s | 9 |
+| `sortable` | 56s | Pass | 92s | 5 |
+
+Holdout set:
+
+| Repo | Baseline | pnpm-migrate result | Migration time | Changed files |
+| --- | ---: | --- | ---: | ---: |
+| `underscore` | 15s | Pass | 106s | 6 |
+| `winston` | 19s | Pass | 117s | 6 |
+| `layui` | 7s | Pass | 27s | 9 |
+| `modernizr` | 10s | Pass | 26s | 17 |
+| `node-red` | 6s | Pass | 26s | 7 |
+| `claude-hud` | 17s | Pass | 28s | 14 |
+| `magicmirror` | 50s | Pass | 321s | 8 |
+| `opencli` | 13s | Pass | 594s | 33 |
+| `p5` | 74s | Pass | 444s | 53 |
+| `semantic-release` | 128s | Pass | 435s | 7 |
+
+Rejected local candidates from this batch mostly failed before migration: `clipboard`, `feather`, `swagger-ui`, `flvjs`, `netron`, `octotree`, `react-boilerplate`, `shardeum`, `shields`, and `stackedit`. `headlessui`, `immutable`, and `simple-icons` had migration/post-test issues and should be revisited only after the benchmark suite is cheaper.
+
+## Benchmark Plan
+
+After 60 repos, optimization work should use a tiered benchmark suite:
+
+| Tier | Purpose | Command shape |
+| --- | --- | --- |
+| Fixture | Catch deterministic regressions cheaply. | `scripts/test-local-fixture.sh` |
+| Phase | Measure migration-only timing on slow repos. | skip baseline, run `migrate` and `validate`, skip repo post-test |
+| Canary | Validate speed changes across representative repos. | 8-12 repos, fast mode, post-tests enabled |
+| Full | Release confidence. | 60 repos, fast mode, post-tests enabled |
+
+The immediate speed targets are the batch-5 slow migrations: `opencli`, `p5`, `semantic-release`, `magicmirror`, `highlightjs`, `docsify`, `winston`, `mocha`, and `underscore`.
+
 `Time saved` should be calculated as:
 
 ```text
