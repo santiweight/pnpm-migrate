@@ -326,6 +326,14 @@ scripts/benchmark-suite.sh lockfile
 
 Result: `.eval/bench-lockfile` passed 9/9 targets in 218 seconds wall time. Migration phase average was 108.4 seconds; the slowest migration was `magicmirror` at 194 seconds. Because this tier uses `--skip-install`, the remaining cost is mostly lockfile import/resolution and deterministic file rewrites, not repo post-tests.
 
+After adding phase traces and prefiltering the remaining npm/npx report to files that actually mention npm-like commands:
+
+```text
+scripts/benchmark-suite.sh lockfile
+```
+
+Result: `.eval/bench-lockfile-prefilter` passed 9/9 targets in 37 seconds wall time. Migration phase average was 15.3 seconds; the slowest migration was `p5` at 23 seconds. Aggregated phase cost was led by `convert_lockfile` at 77 seconds total and `report_remaining_npm_commands` at 21 seconds total.
+
 `Time saved` should be calculated as:
 
 ```text

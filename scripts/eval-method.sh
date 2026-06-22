@@ -158,7 +158,7 @@ run_tool() {
   if [ "$SKIP_TOOL_INSTALL" -eq 1 ]; then
     args+=(--skip-install)
   fi
-  timed_run migrate bash "${args[@]}"
+  timed_run migrate env "PNPM_MIGRATE_TRACE_FILE=$LOG_DIR/migrate-phases.tsv" bash "${args[@]}"
 }
 
 run_claude() {

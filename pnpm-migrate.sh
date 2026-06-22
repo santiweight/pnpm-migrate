@@ -12,6 +12,7 @@ SKIP_AGENT=0
 SKIP_INSTALL=0
 RUN_TESTS=1
 TRUST_LOCKFILE="${PNPM_MIGRATE_TRUST_LOCKFILE:-0}"
+TRACE_FILE="${PNPM_MIGRATE_TRACE_FILE:-}"
 
 usage() {
   cat <<'USAGE'
@@ -60,6 +61,28 @@ run() {
   else
     "$@"
   fi
+}
+
+trace_init() {
+  [ -n "$TRACE_FILE" ] || return 0
+  mkdir -p "$(dirname "$TRACE_FILE")"
+  printf 'phase\tstatus\tduration_seconds\n' > "$TRACE_FILE"
+}
+
+phase() {
+  local name="$1"
+  shift
+  local start end status
+  start="$(date +%s)"
+  set +e
+  "$@"
+  status="$?"
+  set -e
+  end="$(date +%s)"
+  if [ -n "$TRACE_FILE" ]; then
+    printf '%s\t%s\t%s\n' "$name" "$status" "$((end - start))" >> "$TRACE_FILE"
+  fi
+  return "$status"
 }
 
 pnpm_install() {
@@ -1152,6 +1175,7 @@ report_remaining_npm_commands() {
   local report="$STATE_DIR/remaining-npm-commands.txt"
   : > "$report"
   printf '%s\n' "$files" | while IFS= read -r file; do
+    grep -IqE '\b(npm|npx)\b|npm:' "$file" || continue
     node "$STATE_DIR/find-remaining-npm.js" "$file" >> "$report" || true
   done
   if [ -s "$report" ]; then
@@ -1345,32 +1369,33 @@ run_agent() {
 main() {
   parse_args "$@"
   init_state
+  trace_init
   write_helpers
   write_agent_prompt
-  select_agent
-  preflight
+  phase select_agent select_agent
+  phase preflight preflight
 
   log "state directory: $STATE_DIR"
   log "project directory: $PROJECT_DIR"
   log "selected agent: $AGENT"
 
-  write_pnpm_workspace_if_needed
-  set_package_manager
-  normalize_github_tarball_dependencies
-  convert_lockfile
-  repair_imported_transitive_dependencies
-  remove_npm_lockfiles
-  rewrite_package_scripts
-  fix_karma_configs
-  repair_workspace_import_dependencies
-  repair_node_types_dependency
-  install_deps
-  format_metadata_if_needed
-  rewrite_ci_npm_commands
-  rewrite_markdown_npm_commands
-  report_remaining_npm_commands
-  run_agent
-  run_verification
+  phase write_pnpm_workspace write_pnpm_workspace_if_needed
+  phase set_package_manager set_package_manager
+  phase normalize_github_tarballs normalize_github_tarball_dependencies
+  phase convert_lockfile convert_lockfile
+  phase repair_imported_transitive_deps repair_imported_transitive_dependencies
+  phase remove_npm_lockfiles remove_npm_lockfiles
+  phase rewrite_package_scripts rewrite_package_scripts
+  phase fix_karma_configs fix_karma_configs
+  phase repair_workspace_import_deps repair_workspace_import_dependencies
+  phase repair_node_types_dependency repair_node_types_dependency
+  phase install_deps install_deps
+  phase format_metadata format_metadata_if_needed
+  phase rewrite_ci_npm_commands rewrite_ci_npm_commands
+  phase rewrite_markdown_npm_commands rewrite_markdown_npm_commands
+  phase report_remaining_npm_commands report_remaining_npm_commands
+  phase run_agent run_agent
+  phase run_verification run_verification
 
   log "done"
 }
