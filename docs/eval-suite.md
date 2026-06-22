@@ -258,6 +258,17 @@ Focused repeat-mode sample:
 | `marked` | 19s | 19s | Pass |
 | `uuid` | 101s | 14s | Pass |
 
+Full promoted sample:
+
+```text
+PNPM_MIGRATE_TRUST_LOCKFILE=1
+PNPM_MIGRATE_EVAL_SKIP_BASELINE=1
+PNPM_MIGRATE_EVAL_MIRROR_ROOT=.eval/mirrors
+PNPM_MIGRATE_EVAL_JOBS=5
+```
+
+Result: `.eval/batch4-expanded-40-fast-trust` passed 40/40 targets in 233 seconds wall time. Migration phase average was 14.5 seconds per repo; the slowest migration phase was `lerna` at 43 seconds.
+
 `Time saved` should be calculated as:
 
 ```text

@@ -108,6 +108,8 @@ Third 10-repo expansion:
 
 The third expansion added global install rewrites and combined pnpm policy retries for exotic subdependencies plus ignored build approvals.
 
+Fast repeat mode with `PNPM_MIGRATE_TRUST_LOCKFILE=1` passed all 40 targets in 233 seconds wall time. Migration phase average: 14.5s per repo.
+
 ## Supported Migration Steps
 
 - imports `package-lock.json` into `pnpm-lock.yaml`
