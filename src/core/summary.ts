@@ -1,7 +1,10 @@
+import { readdirSync, rmSync } from "node:fs";
+import path from "node:path";
 import { runCapture, type LoggedResult } from "../utils/command.ts";
 import type { MigrationWorktree } from "./worktree.ts";
 
 const nonDependencyPathspec = ["--", ".", ":!node_modules", ":!**/node_modules"];
+const generatedDependencyDirs = new Set(["node_modules", ".pnpm-store"]);
 
 export type CommitResult = {
   changedFileCount: number;
@@ -20,7 +23,40 @@ export function countChangedFiles(worktree: MigrationWorktree): number {
     .filter(Boolean).length;
 }
 
+function hasTrackedFiles(worktree: MigrationWorktree, dirPath: string): boolean {
+  const relativePath = path.relative(worktree.worktreePath, dirPath) || ".";
+  const result = runCapture("git", ["ls-files", "--", `${relativePath}/`], { cwd: worktree.worktreePath });
+  return result.stdout.length > 0;
+}
+
+function pruneGeneratedDependencyDirs(worktree: MigrationWorktree, dirPath = worktree.worktreePath): void {
+  let entries;
+  try {
+    entries = readdirSync(dirPath, { withFileTypes: true });
+  } catch {
+    return;
+  }
+
+  for (const entry of entries) {
+    if (!entry.isDirectory() || entry.name === ".git") {
+      continue;
+    }
+
+    const childPath = path.join(dirPath, entry.name);
+    if (generatedDependencyDirs.has(entry.name)) {
+      if (!hasTrackedFiles(worktree, childPath)) {
+        rmSync(childPath, { force: true, recursive: true });
+      }
+      continue;
+    }
+
+    pruneGeneratedDependencyDirs(worktree, childPath);
+  }
+}
+
 export function commitMigration(worktree: MigrationWorktree): CommitResult {
+  pruneGeneratedDependencyDirs(worktree);
+
   const changedFileCount = countChangedFiles(worktree);
 
   if (changedFileCount === 0) {
