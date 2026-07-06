@@ -140,11 +140,10 @@ function showEnvironment(env) {
   );
   note(
     [
-      "pnpm-migrate creates a temporary git worktree and migrates there.",
-      "Your current checkout is not touched.",
-      "At the end, the migrated repo is available as a branch you can inspect.",
+      "pnpm-migrate performs all work in an isolated git worktree on a new branch.",
+      "Your current directory is not modified.",
     ].join("\n"),
-    "Safe by default",
+    "pnpm-migrate will not touch your work",
   );
 }
 
