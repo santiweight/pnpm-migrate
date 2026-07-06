@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { spawn, spawnSync } from "node:child_process";
-import { createWriteStream, existsSync } from "node:fs";
+import { createWriteStream, existsSync, readFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -21,6 +21,62 @@ new Command()
   .parse(process.argv);
 
 const autoApprove = process.env.PNPM_MIGRATE_AUTO_APPROVE === "1";
+
+const deterministicStages = [
+  {
+    id: "worktree",
+    label: "Create isolated git worktree",
+  },
+  {
+    id: "config",
+    label: "Migrate npm config -> pnpm",
+    phases: [
+      "select_agent",
+      "preflight",
+      "write_pnpm_workspace",
+      "set_package_manager",
+      "normalize_github_tarballs",
+      "convert_lockfile",
+      "repair_imported_transitive_deps",
+      "remove_npm_lockfiles",
+    ],
+  },
+  {
+    id: "repo",
+    label: "Rewrite scripts and workspace assumptions",
+    phases: [
+      "rewrite_package_scripts",
+      "fix_karma_configs",
+      "repair_workspace_import_deps",
+      "repair_node_types_dependency",
+    ],
+  },
+  {
+    id: "install",
+    label: "Install dependencies with pnpm",
+    phases: ["install_deps"],
+  },
+  {
+    id: "docs",
+    label: "Migrate CI, Docker, documentation",
+    phases: [
+      "format_metadata",
+      "rewrite_ci_npm_commands",
+      "rewrite_markdown_npm_commands",
+      "report_remaining_npm_commands",
+      "run_agent",
+    ],
+  },
+  {
+    id: "verify",
+    label: "Verify migration worked",
+    phases: ["run_verification"],
+  },
+  {
+    id: "commit",
+    label: "Commit migration branch",
+  },
+];
 
 function fail(message) {
   console.error(chalk.red(`pnpm-migrate: ${message}`));
@@ -266,26 +322,139 @@ function createMigrationWorktree(env) {
   };
 }
 
-function runEngine(worktree) {
+function readTrace(tracePath) {
+  if (!tracePath || !existsSync(tracePath)) {
+    return new Map();
+  }
+
+  return new Map(
+    readFileSync(tracePath, "utf8")
+      .trim()
+      .split(/\r?\n/)
+      .slice(1)
+      .filter(Boolean)
+      .map((line) => {
+        const [phase, status] = line.split("\t");
+        return [phase, Number(status)];
+      }),
+  );
+}
+
+function resolveStageStatuses(tracePath, state) {
+  const trace = readTrace(tracePath);
+  const statuses = deterministicStages.map((stage) => {
+    if (stage.id === "worktree") {
+      return { ...stage, status: state.worktree };
+    }
+
+    if (stage.id === "commit") {
+      return { ...stage, status: state.commit };
+    }
+
+    const phases = stage.phases ?? [];
+    if (phases.some((phase) => trace.get(phase) > 0)) {
+      return { ...stage, status: "failed" };
+    }
+
+    if (phases.every((phase) => trace.get(phase) === 0)) {
+      return { ...stage, status: "done" };
+    }
+
+    return { ...stage, status: "pending" };
+  });
+
+  const active = statuses.find((stage) => stage.status === "pending");
+  if (active && state.running) {
+    active.status = "active";
+  }
+
+  return statuses;
+}
+
+function createChecklistRenderer(tracePath) {
+  let previousLines = 0;
+  let previousText = "";
+
+  function lineFor(stage) {
+    const symbols = {
+      active: chalk.cyan("◒"),
+      done: chalk.green("✓"),
+      failed: chalk.red("✗"),
+      pending: chalk.dim("○"),
+    };
+    return `│  ${symbols[stage.status] ?? symbols.pending} ${stage.label}`;
+  }
+
+  function render(state) {
+    if (!process.stdout.isTTY) {
+      return;
+    }
+
+    const statuses = resolveStageStatuses(tracePath, state);
+    const active = statuses.find((stage) => stage.status === "active");
+    const failed = statuses.find((stage) => stage.status === "failed");
+    const lines = [
+      "◇  Deterministic migration",
+      "│",
+      ...statuses.map(lineFor),
+      "│",
+      failed
+        ? `│  Failed: ${failed.label}`
+        : active
+          ? `│  Current: ${active.label}`
+          : "│  Current: complete",
+      "│",
+    ];
+    const text = lines.join("\n");
+
+    if (text === previousText) {
+      return;
+    }
+
+    if (previousLines > 0) {
+      process.stdout.write(`\x1b[${previousLines}A\x1b[J`);
+    }
+
+    process.stdout.write(`${text}\n`);
+    previousLines = lines.length;
+    previousText = text;
+  }
+
+  function finish() {
+    previousLines = 0;
+    previousText = "";
+  }
+
+  return { finish, render };
+}
+
+function runEngine(worktree, tracePath, onTraceUpdate) {
   return new Promise((resolve) => {
     const logPath = path.join(worktree.runRoot, "deterministic-migration.log");
     const log = createWriteStream(logPath, { flags: "a" });
     const child = spawn("bash", [enginePath, "--yes", "--agent", "manual"], {
       cwd: worktree.projectPath,
-      env: process.env,
+      env: {
+        ...process.env,
+        PNPM_MIGRATE_TRACE_FILE: tracePath,
+      },
       stdio: ["ignore", "pipe", "pipe"],
     });
+    const interval = setInterval(() => onTraceUpdate?.(), 300);
 
     child.stdout.pipe(log);
     child.stderr.pipe(log);
 
     child.on("exit", (code, signal) => {
+      clearInterval(interval);
+      onTraceUpdate?.();
       log.end(() => {
         resolve({ code: signal ? 1 : code ?? 1, logPath, signal });
       });
     });
 
     child.on("error", (error) => {
+      clearInterval(interval);
       log.write(`${error.stack ?? error.message}\n`);
       log.end(() => {
         resolve({ code: 1, logPath, signal: null });
@@ -378,12 +547,21 @@ async function main() {
   const worktree = createMigrationWorktree(env);
   s.stop(`Git worktree created: ${worktree.branch}`);
 
-  const migrationSpinner = spinner();
-  migrationSpinner.start("Running deterministic migration");
-  const result = await runEngine(worktree);
+  const tracePath = path.join(worktree.runRoot, "deterministic-phases.tsv");
+  const checklist = createChecklistRenderer(tracePath);
+  const checklistState = {
+    commit: "pending",
+    running: true,
+    worktree: "done",
+  };
+  checklist.render(checklistState);
+
+  const result = await runEngine(worktree, tracePath, () => checklist.render(checklistState));
+  checklistState.running = false;
 
   if (result.code !== 0) {
-    migrationSpinner.stop("Deterministic migration failed");
+    checklist.render(checklistState);
+    checklist.finish();
     summarizeWorktree(worktree, env.branch, {
       committed: false,
       changedFileCount: runCapture("git", ["status", "--short"], { cwd: worktree.worktreePath })
@@ -396,11 +574,12 @@ async function main() {
     process.exit(result.code);
   }
 
-  migrationSpinner.stop("Deterministic migration passed");
-  const commitSpinner = spinner();
-  commitSpinner.start("Committing migration branch");
+  checklistState.commit = "active";
+  checklist.render(checklistState);
   const commitResult = commitMigration(worktree);
-  commitSpinner.stop(commitResult.committed ? "Migration branch committed" : "Migration branch was not committed");
+  checklistState.commit = commitResult.committed ? "done" : "failed";
+  checklist.render(checklistState);
+  checklist.finish();
   summarizeWorktree(worktree, env.branch, commitResult, result);
 
   if (!commitResult.committed) {
