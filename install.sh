@@ -47,16 +47,19 @@ fi
 npm install --prefix "$STATE_DIR" --omit=dev --no-audit --no-fund --silent
 
 needs_tty=1
+if [ "${PNPM_MIGRATE_AUTO_APPROVE:-0}" = "1" ]; then
+  needs_tty=0
+fi
 for arg in "$@"; do
   case "$arg" in
-    --yes|--agent|--agent=*|--skip-agent|-h|--help)
+    -h|--help)
       needs_tty=0
       ;;
   esac
 done
 
 if [ "$needs_tty" -eq 1 ] && ! has_tty; then
-  fail "interactive mode requires a TTY; rerun with --yes, --agent manual, or --agent claude"
+  fail "interactive mode requires a TTY; run pnpm-migrate from a terminal"
 fi
 
 if has_tty; then
