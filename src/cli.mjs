@@ -58,6 +58,63 @@ function detectAgent() {
   return agents;
 }
 
+function parseGitHubRemote(remoteUrl) {
+  const match = remoteUrl.match(/github\.com[:/]([^/\s]+)\/([^/\s]+?)(?:\.git)?$/);
+  if (!match) {
+    return null;
+  }
+
+  return {
+    owner: match[1],
+    repo: match[2],
+  };
+}
+
+function detectGitHubOwnerName(owner) {
+  const response = runCapture(process.execPath, [
+    "-e",
+    `
+const https = require("https");
+const owner = process.argv[1];
+const request = https.get({
+  hostname: "api.github.com",
+  path: \`/users/\${encodeURIComponent(owner)}\`,
+  headers: { "User-Agent": "pnpm-migrate" },
+  timeout: 1000,
+}, (response) => {
+  let body = "";
+  response.setEncoding("utf8");
+  response.on("data", (chunk) => { body += chunk; });
+  response.on("end", () => {
+    try {
+      const user = JSON.parse(body);
+      if (typeof user.name === "string" && user.name.trim()) {
+        process.stdout.write(user.name.trim());
+      }
+    } catch {}
+  });
+});
+request.on("timeout", () => request.destroy());
+request.on("error", () => {});
+`,
+    owner,
+  ]);
+
+  return response.status === 0 && response.stdout ? response.stdout : null;
+}
+
+function detectRepoLabel(gitRoot, fallbackName) {
+  const remote = runCapture("git", ["remote", "get-url", "origin"], { cwd: gitRoot });
+  if (remote.status === 0) {
+    const parsed = parseGitHubRemote(remote.stdout);
+    if (parsed) {
+      return `${detectGitHubOwnerName(parsed.owner) ?? parsed.owner} > ${parsed.repo}`;
+    }
+  }
+
+  return fallbackName;
+}
+
 function detectEnvironment() {
   const failures = [];
   const gitRootResult = runCapture("git", ["rev-parse", "--show-toplevel"]);
@@ -93,12 +150,14 @@ function detectEnvironment() {
   let branch = "";
   let dirty = false;
   let repoName = path.basename(projectDir);
+  let repoLabel = repoName;
   let projectRelativePath = ".";
 
   if (insideGit) {
     branch = runCapture("git", ["branch", "--show-current"], { cwd: gitRoot }).stdout || "HEAD";
     dirty = runCapture("git", ["status", "--porcelain"], { cwd: gitRoot }).stdout.length > 0;
     repoName = path.basename(gitRoot);
+    repoLabel = detectRepoLabel(gitRoot, repoName);
     projectRelativePath = path.relative(gitRoot, projectDir) || ".";
 
     if (dirty) {
@@ -116,6 +175,7 @@ function detectEnvironment() {
     packageJson,
     projectDir,
     projectRelativePath,
+    repoLabel,
     repoName,
   };
 }
@@ -130,17 +190,16 @@ function showEnvironment(env) {
   intro(`${chalk.bold("pnpm-migrate")} ${chalk.dim("npm -> pnpm")}`);
   note(
     [
-      `${chalk.green("✓")} Git repo detected: ${env.gitRoot}`,
+      `${chalk.green("✓")} Git detected: ${env.repoLabel}`,
       `${chalk.green("✓")} Branch: ${env.branch}`,
-      `${chalk.green("✓")} npm project: ${env.projectDir}`,
-      `${chalk.green("✓")} npm lockfile: ${env.lockfiles.join(", ")}`,
       `${chalk.green("✓")} Agents available: ${env.agents.join(", ")}`,
     ].join("\n"),
     "Environment check",
   );
   note(
     [
-      "pnpm-migrate performs all work in an isolated git worktree on a new branch.",
+      "pnpm-migrate acts in total isolation.",
+      "All work happens in an isolated git worktree on a new branch.",
       "Your current directory is not modified.",
     ].join("\n"),
     "pnpm-migrate will not touch your work",
