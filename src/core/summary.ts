@@ -13,6 +13,11 @@ export type CommitResult = {
   worktree: MigrationWorktree;
 };
 
+type CommitOptions = {
+  allowNoChanges?: boolean;
+  message: string;
+};
+
 export type MigrationSummary = {
   lines: string[];
 };
@@ -54,13 +59,18 @@ function pruneGeneratedDependencyDirs(worktree: MigrationWorktree, dirPath = wor
   }
 }
 
-export function commitMigration(worktree: MigrationWorktree): CommitResult {
+export function commitWorktree(worktree: MigrationWorktree, options: CommitOptions): CommitResult {
   pruneGeneratedDependencyDirs(worktree);
 
   const changedFileCount = countChangedFiles(worktree);
 
   if (changedFileCount === 0) {
-    return { changedFileCount: 0, committed: false, error: "No migration changes were produced", worktree };
+    return {
+      changedFileCount: 0,
+      committed: false,
+      error: options.allowNoChanges ? null : "No migration changes were produced",
+      worktree,
+    };
   }
 
   const add = runCapture("git", ["add", "-A", ...nonDependencyPathspec], { cwd: worktree.worktreePath });
@@ -77,7 +87,7 @@ export function commitMigration(worktree: MigrationWorktree): CommitResult {
       "user.email=pnpm-migrate@example.invalid",
       "commit",
       "-m",
-      "Migrate from npm to pnpm",
+      options.message,
     ],
     { cwd: worktree.worktreePath },
   );
@@ -87,6 +97,20 @@ export function commitMigration(worktree: MigrationWorktree): CommitResult {
   }
 
   return { changedFileCount, committed: true, error: null, worktree };
+}
+
+export function commitMigration(worktree: MigrationWorktree): CommitResult {
+  return commitWorktree(worktree, {
+    allowNoChanges: false,
+    message: "Migrate from npm to pnpm",
+  });
+}
+
+export function commitCleanup(worktree: MigrationWorktree): CommitResult {
+  return commitWorktree(worktree, {
+    allowNoChanges: true,
+    message: "Polish pnpm migration cleanup",
+  });
 }
 
 export function buildMigrationSummary(

@@ -4,6 +4,7 @@ import type { PreflightEnvironment } from "../core/preflight.ts";
 import type { CommitResult, MigrationSummary } from "../core/summary.ts";
 import type { MigrationWorktree } from "../core/worktree.ts";
 import type { LoggedResult } from "../utils/command.ts";
+import type { CleanupResult } from "../core/cleanup.ts";
 
 export function showFailures(failures: string[]): void {
   intro(`${chalk.bold("pnpm-migrate")} ${chalk.dim("npm -> pnpm")}`);
@@ -52,6 +53,36 @@ export function showMigrationSummary(summary: MigrationSummary): void {
   note(summary.lines.join("\n"), "Migration branch ready");
 }
 
+export function showCleanupIntro(): void {
+  note(
+    [
+      "A coding agent will now review and polish the migration:",
+      "- README/docs wording",
+      "- pnpm-specific install/test issues",
+      "- CI/Docker edge cases",
+      "- remaining migration warnings",
+    ].join("\n"),
+    "Recommended cleanup",
+  );
+}
+
+export function showCleanupSkipped(reason: string): void {
+  note(reason, "Cleanup skipped");
+}
+
+export function showCleanupSummary(result: CleanupResult): void {
+  note(
+    [
+      `Agent: ${result.agentLabel}`,
+      `Committed: ${result.commit.committed ? "yes" : "no"}`,
+      `Changed files: ${result.commit.changedFileCount}`,
+      `Log: ${result.logPath}`,
+      result.commit.error ? `Commit note: ${result.commit.error}` : "",
+    ].filter(Boolean).join("\n"),
+    "Cleanup complete",
+  );
+}
+
 export function buildFailedCommitResult(worktree: MigrationWorktree, changedFileCount: number): CommitResult {
   return {
     changedFileCount,
@@ -72,5 +103,5 @@ export function showUncommittedFinish(): never {
 }
 
 export function showDeterministicComplete(_engineResult: LoggedResult): void {
-  outro(chalk.green("Deterministic migration complete. Cleanup/agent stage is next to design."));
+  outro(chalk.green("Migration complete."));
 }
