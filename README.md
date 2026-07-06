@@ -9,7 +9,7 @@ cd your-project
 and run:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/santiweight/pnpm-migrate/main/pnpm-migrate.sh | bash
+curl -fsSL https://raw.githubusercontent.com/santiweight/pnpm-migrate/main/install.sh | bash
 ```
 
 (`pnpm-migrate` does not install any scripts. it is single run, with ephemeral `/tmp` state)
@@ -17,7 +17,7 @@ curl -fsSL https://raw.githubusercontent.com/santiweight/pnpm-migrate/main/pnpm-
 For faster repeat/local migrations when you trust the source lockfile:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/santiweight/pnpm-migrate/main/pnpm-migrate.sh | PNPM_MIGRATE_TRUST_LOCKFILE=1 bash
+curl -fsSL https://raw.githubusercontent.com/santiweight/pnpm-migrate/main/install.sh | PNPM_MIGRATE_TRUST_LOCKFILE=1 bash
 ```
 
 ## Why?

@@ -1,0 +1,27 @@
+{
+  "name": "pnpm-migrate",
+  "version": "0.1.0",
+  "description": "One-shot npm to pnpm migration assistant.",
+  "type": "module",
+  "packageManager": "pnpm@11.8.0",
+  "bin": {
+    "pnpm-migrate": "src/cli.mjs"
+  },
+  "scripts": {
+    "dev": "node src/cli.mjs",
+    "check": "node --check src/cli.mjs && bash -n install.sh pnpm-migrate.sh && scripts/benchmark-suite.sh fixture"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@clack/prompts": "^1.7.0",
+    "chalk": "^5.6.2",
+    "commander": "^14.0.1"
+  },
+  "files": [
+    "install.sh",
+    "pnpm-migrate.sh",
+    "src"
+  ]
+}
