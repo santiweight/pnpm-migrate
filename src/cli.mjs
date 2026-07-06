@@ -252,13 +252,16 @@ function showEnvironment(env) {
     ].join("\n"),
     "Environment check",
   );
+}
+
+function showWorktreeSafety(worktree) {
   note(
     [
       "pnpm-migrate acts in total isolation.",
-      "All work happens in an isolated git worktree on a new branch.",
+      `All work will be done in ${worktree.worktreePath}`,
       "Your current directory is not modified.",
     ].join("\n"),
-    "pnpm-migrate will not touch your work",
+    chalk.yellow("pnpm-migrate will not touch your work"),
   );
 }
 
@@ -527,7 +530,12 @@ async function main() {
   }
 
   showEnvironment(env);
-  await askToContinue("Start migration in a temporary worktree?");
+
+  const s = spinner();
+  s.start("Creating temporary git worktree");
+  const worktree = createMigrationWorktree(env);
+  s.stop(`Git worktree created: ${worktree.branch}`);
+  showWorktreeSafety(worktree);
 
   note(
     [
@@ -541,11 +549,6 @@ async function main() {
     "Deterministic steps",
   );
   await askToContinue("Run deterministic npm -> pnpm migration?");
-
-  const s = spinner();
-  s.start("Creating temporary git worktree");
-  const worktree = createMigrationWorktree(env);
-  s.stop(`Git worktree created: ${worktree.branch}`);
 
   const tracePath = path.join(worktree.runRoot, "deterministic-phases.tsv");
   const checklist = createChecklistRenderer(tracePath);
