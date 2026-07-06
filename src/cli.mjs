@@ -293,14 +293,14 @@ async function main() {
 
   note(
     [
-      "This stage only runs deterministic tooling:",
-      "- lockfiles, package metadata, workspaces",
-      "- scripts, CI, Docker, obvious contributor docs",
-      "- pnpm install and project verification",
+      "This stage runs the basic no-regrets migration:",
+      "- migrate npm config -> pnpm",
+      "- migrate CI, Docker, documentation",
+      "- verify migration worked",
       "",
       "No coding agent is involved in this stage.",
     ].join("\n"),
-    "Deterministic migration",
+    "Deterministic steps",
   );
   await askToContinue("Run deterministic npm -> pnpm migration?");
 
