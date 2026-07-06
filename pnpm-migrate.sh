@@ -13,6 +13,26 @@ SKIP_INSTALL=0
 RUN_TESTS=1
 TRUST_LOCKFILE="${PNPM_MIGRATE_TRUST_LOCKFILE:-0}"
 TRACE_FILE="${PNPM_MIGRATE_TRACE_FILE:-}"
+COLOR_ENABLED=0
+if [ -z "${NO_COLOR:-}" ] && [ -w /dev/tty ] 2>/dev/null; then
+  COLOR_ENABLED=1
+fi
+
+if [ "$COLOR_ENABLED" -eq 1 ]; then
+  BOLD="$(printf '\033[1m')"
+  DIM="$(printf '\033[2m')"
+  RESET="$(printf '\033[0m')"
+  CYAN="$(printf '\033[36m')"
+  GREEN="$(printf '\033[32m')"
+  YELLOW="$(printf '\033[33m')"
+else
+  BOLD=""
+  DIM=""
+  RESET=""
+  CYAN=""
+  GREEN=""
+  YELLOW=""
+fi
 
 usage() {
   cat <<'USAGE'
@@ -43,6 +63,34 @@ log() {
 fail() {
   printf '[pnpm-migrate] error: %s\n' "$*" >&2
   exit 1
+}
+
+tty_available() {
+  [ -r /dev/tty ] && [ -w /dev/tty ]
+}
+
+ui_printf() {
+  if tty_available; then
+    printf "$@" > /dev/tty
+  else
+    printf "$@"
+  fi
+}
+
+ui_read() {
+  local var_name="$1"
+  if tty_available; then
+    IFS= read -r "$var_name" < /dev/tty
+  else
+    IFS= read -r "$var_name"
+  fi
+}
+
+ui_banner() {
+  ui_printf '\n%s+--------------------------------------------------+%s\n' "$CYAN" "$RESET"
+  ui_printf '%s|%s %spnpm-migrate%s                                      %s|%s\n' "$CYAN" "$RESET" "$BOLD" "$RESET" "$CYAN" "$RESET"
+  ui_printf '%s|%s deterministic npm -> pnpm migration             %s|%s\n' "$CYAN" "$RESET" "$CYAN" "$RESET"
+  ui_printf '%s+--------------------------------------------------+%s\n\n' "$CYAN" "$RESET"
 }
 
 cleanup() {
@@ -106,8 +154,8 @@ ask_yes_no() {
   if [ "$YES" -eq 1 ]; then
     return 0
   fi
-  printf '%s [y/N] ' "$prompt"
-  read -r answer
+  ui_printf '%s [y/N] ' "$prompt"
+  ui_read answer
   case "$answer" in
     y|Y|yes|YES) return 0 ;;
     *) return 1 ;;
@@ -167,14 +215,19 @@ select_agent() {
     return 0
   fi
 
-  cat <<'MENU'
+  if ! tty_available; then
+    fail "agent selection requires a TTY; rerun with --agent manual, --agent claude, or --yes"
+  fi
 
-Choose an agent for repo-specific cleanup:
-  1) Claude Code
-  2) Manual deterministic migration only
-MENU
-  printf 'Selection [1-2]: '
-  read -r selection
+  ui_banner
+  ui_printf '%sAgent cleanup%s\n' "$BOLD" "$RESET"
+  ui_printf '%sThe deterministic migration runs first. Pick what should handle repo-specific cleanup after that.%s\n\n' "$DIM" "$RESET"
+  ui_printf '  %s1%s  %sClaude Code%s\n' "$GREEN" "$RESET" "$BOLD" "$RESET"
+  ui_printf '     Uses your existing Claude CLI login for focused migration cleanup.\n\n'
+  ui_printf '  %s2%s  %sManual only%s %s(default)%s\n' "$GREEN" "$RESET" "$BOLD" "$RESET" "$DIM" "$RESET"
+  ui_printf '     Runs only deterministic rewrites and reports leftovers for review.\n\n'
+  ui_printf '%sSelection [1-2, Enter for 2]:%s ' "$YELLOW" "$RESET"
+  ui_read selection
   case "$selection" in
     1) AGENT="claude" ;;
     2|"") AGENT="manual" ;;
