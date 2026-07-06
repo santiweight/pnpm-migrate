@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { createWriteStream, existsSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -268,19 +268,28 @@ function createMigrationWorktree(env) {
 
 function runEngine(worktree) {
   return new Promise((resolve) => {
+    const logPath = path.join(worktree.runRoot, "deterministic-migration.log");
+    const log = createWriteStream(logPath, { flags: "a" });
     const child = spawn("bash", [enginePath, "--yes", "--agent", "manual"], {
       cwd: worktree.projectPath,
       env: process.env,
-      stdio: "inherit",
+      stdio: ["ignore", "pipe", "pipe"],
     });
 
+    child.stdout.pipe(log);
+    child.stderr.pipe(log);
+
     child.on("exit", (code, signal) => {
-      resolve({ code: signal ? 1 : code ?? 1, signal });
+      log.end(() => {
+        resolve({ code: signal ? 1 : code ?? 1, logPath, signal });
+      });
     });
 
     child.on("error", (error) => {
-      console.error(chalk.red(error.message));
-      resolve({ code: 1, signal: null });
+      log.write(`${error.stack ?? error.message}\n`);
+      log.end(() => {
+        resolve({ code: 1, logPath, signal: null });
+      });
     });
   });
 }
@@ -321,7 +330,7 @@ function commitMigration(worktree) {
   return { committed: true, changedFileCount: changedFiles.length, error: null };
 }
 
-function summarizeWorktree(worktree, baseBranch, commitResult) {
+function summarizeWorktree(worktree, baseBranch, commitResult, engineResult) {
   const diffStat = commitResult.committed
     ? runCapture("git", ["diff", "--stat", `${baseBranch}...HEAD`], { cwd: worktree.worktreePath }).stdout
     : runCapture("git", ["diff", "--stat"], { cwd: worktree.worktreePath }).stdout;
@@ -332,6 +341,7 @@ function summarizeWorktree(worktree, baseBranch, commitResult) {
       `Worktree: ${worktree.worktreePath}`,
       `Committed: ${commitResult.committed ? "yes" : "no"}`,
       `Changed files: ${commitResult.changedFileCount}`,
+      engineResult?.logPath ? `Log: ${engineResult.logPath}` : "",
       commitResult.error ? `Commit note: ${commitResult.error}` : "",
       diffStat ? `\n${diffStat}` : "",
     ].filter(Boolean).join("\n"),
@@ -368,9 +378,12 @@ async function main() {
   const worktree = createMigrationWorktree(env);
   s.stop(`Git worktree created: ${worktree.branch}`);
 
+  const migrationSpinner = spinner();
+  migrationSpinner.start("Running deterministic migration");
   const result = await runEngine(worktree);
 
   if (result.code !== 0) {
+    migrationSpinner.stop("Deterministic migration failed");
     summarizeWorktree(worktree, env.branch, {
       committed: false,
       changedFileCount: runCapture("git", ["status", "--short"], { cwd: worktree.worktreePath })
@@ -378,13 +391,17 @@ async function main() {
         .split("\n")
         .filter(Boolean).length,
       error: "Migration failed before commit",
-    });
+    }, result);
     outro(chalk.red("Deterministic migration did not complete. The worktree was kept for inspection."));
     process.exit(result.code);
   }
 
+  migrationSpinner.stop("Deterministic migration passed");
+  const commitSpinner = spinner();
+  commitSpinner.start("Committing migration branch");
   const commitResult = commitMigration(worktree);
-  summarizeWorktree(worktree, env.branch, commitResult);
+  commitSpinner.stop(commitResult.committed ? "Migration branch committed" : "Migration branch was not committed");
+  summarizeWorktree(worktree, env.branch, commitResult, result);
 
   if (!commitResult.committed) {
     outro(chalk.yellow("Deterministic migration finished, but the result was left uncommitted in the worktree."));
