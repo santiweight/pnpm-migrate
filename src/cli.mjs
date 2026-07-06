@@ -419,7 +419,7 @@ function createChecklistRenderer(tracePath) {
     }
 
     process.stdout.write(`${text}\n`);
-    previousLines = lines.length;
+    previousLines = lines.length + 1;
     previousText = text;
   }
 
