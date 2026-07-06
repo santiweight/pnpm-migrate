@@ -18,6 +18,10 @@ fail() {
   exit 1
 }
 
+has_tty() {
+  [ -r /dev/tty ] && [ -w /dev/tty ] && (: < /dev/tty) 2>/dev/null
+}
+
 command -v node >/dev/null 2>&1 || fail "node is required"
 command -v npm >/dev/null 2>&1 || fail "npm is required"
 command -v curl >/dev/null 2>&1 || fail "curl is required"
@@ -41,4 +45,22 @@ else
 fi
 
 npm install --prefix "$STATE_DIR" --omit=dev --no-audit --no-fund --silent
-node "$STATE_DIR/src/cli.mjs" "$@"
+
+needs_tty=1
+for arg in "$@"; do
+  case "$arg" in
+    --yes|--agent|--agent=*|--skip-agent|-h|--help)
+      needs_tty=0
+      ;;
+  esac
+done
+
+if [ "$needs_tty" -eq 1 ] && ! has_tty; then
+  fail "interactive mode requires a TTY; rerun with --yes, --agent manual, or --agent claude"
+fi
+
+if has_tty; then
+  node "$STATE_DIR/src/cli.mjs" "$@" < /dev/tty
+else
+  node "$STATE_DIR/src/cli.mjs" "$@"
+fi
