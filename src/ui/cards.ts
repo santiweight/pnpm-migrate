@@ -27,13 +27,16 @@ export function showEnvironment(env: PreflightEnvironment): void {
 }
 
 export function showWorktreeSafety(worktree: MigrationWorktree): void {
+  const orange = chalk.hex("#f97316");
   note(
     [
-      "pnpm-migrate acts in total isolation.",
+      orange("pnpm-migrate acts in total isolation."),
+      "",
       `All work will be done in ${worktree.worktreePath}`,
+      "",
       "Your current directory is not modified.",
     ].join("\n"),
-    chalk.yellow("pnpm-migrate will not touch your work"),
+    orange("⚠️ pnpm-migrate will not touch your work ⚠️"),
   );
 }
 

@@ -11,7 +11,6 @@ import {
   showDeterministicComplete,
   showDeterministicFailure,
   showDeterministicIntro,
-  showEnvironment,
   showFailures,
   showCleanupIntro,
   showCleanupSkipped,
@@ -23,18 +22,43 @@ import {
 } from "../ui/cards.ts";
 import { askToContinue, chooseCleanupAgent } from "../ui/prompts.ts";
 import { minimumVisible, sectionPause, uiSpacer } from "../ui/timing.ts";
+import type { PreflightEnvironment } from "../core/preflight.ts";
 
 export type InteractiveWorkflowOptions = {
   autoApprove: boolean;
   enginePath: string;
 };
 
+async function showEnvironmentProgress(env: PreflightEnvironment): Promise<void> {
+  const checks = [
+    {
+      start: "Checking Git repository",
+      stop: `Git detected: ${env.repoLabel}`,
+    },
+    {
+      start: "Checking current branch",
+      stop: `Branch: ${env.branch}`,
+    },
+    {
+      start: "Checking coding agents",
+      stop: `Agents available: ${env.agents.map((agent) => agent.label).join(", ")}`,
+    },
+  ];
+
+  for (const check of checks) {
+    const itemSpinner = spinner();
+    itemSpinner.start(check.start);
+    await minimumVisible(() => undefined, 1200);
+    itemSpinner.stop(check.stop);
+  }
+}
+
 export async function runInteractiveWorkflow(options: InteractiveWorkflowOptions): Promise<void> {
   showIntro();
 
   const envSpinner = spinner();
   envSpinner.start("Checking environment");
-  const env = await minimumVisible(() => detectEnvironment(options.enginePath));
+  const env = await minimumVisible(() => detectEnvironment(options.enginePath), 1000);
 
   if (env.failures.length > 0) {
     envSpinner.stop("Environment check failed");
@@ -44,7 +68,7 @@ export async function runInteractiveWorkflow(options: InteractiveWorkflowOptions
 
   envSpinner.stop("Environment check complete");
   await sectionPause();
-  showEnvironment(env);
+  await showEnvironmentProgress(env);
   await sectionPause();
 
   const worktreeSpinner = spinner();
@@ -53,10 +77,10 @@ export async function runInteractiveWorkflow(options: InteractiveWorkflowOptions
   worktreeSpinner.stop(`Git worktree created: ${worktree.branch}`);
   await sectionPause();
   showWorktreeSafety(worktree);
-  await sectionPause();
+  await sectionPause(1200);
 
   showDeterministicIntro();
-  await sectionPause();
+  await sectionPause(1200);
   await askToContinue("Run deterministic npm -> pnpm migration?", options.autoApprove);
 
   const tracePath = path.join(worktree.runRoot, "deterministic-phases.tsv");
