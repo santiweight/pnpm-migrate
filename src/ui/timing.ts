@@ -6,6 +6,14 @@ function shouldDelay(): boolean {
   );
 }
 
+export function clearTerminalView(): void {
+  if (!process.stdout.isTTY || process.env.PNPM_MIGRATE_NO_CLEAR === "1") {
+    return;
+  }
+
+  process.stdout.write("\x1b[2J\x1b[H");
+}
+
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
@@ -18,6 +26,10 @@ export async function sectionPause(ms = 450): Promise<void> {
   }
 
   await sleep(ms);
+}
+
+export async function uiDelay(ms: number): Promise<void> {
+  await sectionPause(ms);
 }
 
 export async function minimumVisible<T>(work: () => T | Promise<T>, ms = 650): Promise<T> {

@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { runCleanup } from "../src/core/cleanup.ts";
+import { createAgentStatusParser } from "../src/agents/status.ts";
 import type { MigrationWorktree } from "../src/core/worktree.ts";
 
 function run(command: string, args: string[], cwd: string): string {
@@ -72,6 +73,10 @@ if (!readFileSync(path.join(project, "cleanup-agent.args"), "utf8").includes("te
   throw new Error("cleanup prompt was not passed to the agent");
 }
 
+if (!readFileSync(path.join(project, "cleanup-agent.args"), "utf8").includes("--verbose")) {
+  throw new Error("Claude stream-json cleanup must include --verbose");
+}
+
 if (!statuses.includes("Inspecting migration files")) {
   throw new Error(`cleanup status callback did not receive streamed activity: ${statuses.join(", ")}`);
 }
@@ -79,6 +84,31 @@ if (!statuses.includes("Inspecting migration files")) {
 const subject = run("git", ["log", "-1", "--pretty=%s"], project);
 if (subject !== "Polish pnpm migration cleanup") {
   throw new Error(`unexpected cleanup commit subject: ${subject}`);
+}
+
+const body = run("git", ["log", "-1", "--pretty=%b"], project);
+if (!body.includes("Created with pnpm-migrate.") || !body.includes("https://github.com/santiweight/pnpm-migrate")) {
+  throw new Error(`cleanup commit is missing pnpm-migrate attribution: ${body}`);
+}
+
+const proseStatuses: string[] = [];
+const parseStatus = createAgentStatusParser("claude", (message) => {
+  proseStatuses.push(message);
+});
+parseStatus(
+  JSON.stringify({
+    type: "stream_event",
+    event: {
+      type: "content_block_delta",
+      delta: {
+        type: "text_delta",
+        text: "docs/config files are already migrated. The",
+      },
+    },
+  }) + "\n",
+);
+if (proseStatuses.length > 0) {
+  throw new Error(`assistant prose should not become spinner status: ${proseStatuses.join(", ")}`);
 }
 
 console.log("cleanup agent smoke passed");

@@ -25,6 +25,7 @@ export function runAgent(
         "--output-format",
         "stream-json",
         "--include-partial-messages",
+        "--verbose",
       ],
       {
         cwd: worktree.projectPath,

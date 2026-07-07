@@ -1,6 +1,7 @@
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { rmSync, symlinkSync } from "node:fs";
 import type { PreflightEnvironment } from "./preflight.ts";
 
 export type MigrationWorktree = {
@@ -49,4 +50,17 @@ export function createMigrationWorktree(env: PreflightEnvironment): MigrationWor
     runRoot,
     worktreePath,
   };
+}
+
+export function displayWorktreePath(worktree: MigrationWorktree): string {
+  const shortRoot = process.env.PNPM_MIGRATE_SHORT_PATH_ROOT || "/tmp";
+  const shortPath = path.join(shortRoot, `${path.basename(worktree.runRoot)}-worktree`);
+
+  try {
+    rmSync(shortPath, { force: true, recursive: true });
+    symlinkSync(worktree.worktreePath, shortPath);
+    return shortPath;
+  } catch {
+    return worktree.worktreePath;
+  }
 }

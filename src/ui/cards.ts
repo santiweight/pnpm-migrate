@@ -2,12 +2,17 @@ import { intro, note, outro } from "@clack/prompts";
 import chalk from "chalk";
 import type { PreflightEnvironment } from "../core/preflight.ts";
 import type { CommitResult, MigrationSummary } from "../core/summary.ts";
-import type { MigrationWorktree } from "../core/worktree.ts";
+import { displayWorktreePath, type MigrationWorktree } from "../core/worktree.ts";
 import type { LoggedResult } from "../utils/command.ts";
 import type { CleanupResult } from "../core/cleanup.ts";
+import type { PublishResult } from "../core/publish.ts";
+
+export function redTitle(value: string): string {
+  return chalk.red(value);
+}
 
 export function showIntro(): void {
-  intro(`${chalk.bold("pnpm-migrate")} ${chalk.dim("npm -> pnpm")}`);
+  intro(`${chalk.yellow("⚠")} ${chalk.yellow.bold("pnpm-migrate")} ${chalk.yellow("⚠")} ${chalk.dim("npm -> pnpm")}`);
 }
 
 export function showFailures(failures: string[]): void {
@@ -30,13 +35,13 @@ export function showWorktreeSafety(worktree: MigrationWorktree): void {
   const orange = chalk.hex("#f97316");
   note(
     [
-      orange("pnpm-migrate acts in total isolation."),
+      orange("pnpm-migrate acts in an isolated environment."),
       "",
-      `All work will be done in ${worktree.worktreePath}`,
+      `All work will be done in ${displayWorktreePath(worktree)}`,
       "",
-      "Your current directory is not modified.",
+      orange("Your current directory will not be modified."),
     ].join("\n"),
-    orange("⚠️ pnpm-migrate will not touch your work ⚠️"),
+    orange("⚠ pnpm-migrate will not touch your work ⚠"),
   );
 }
 
@@ -50,12 +55,45 @@ export function showDeterministicIntro(): void {
       "",
       "No coding agent is involved in this stage.",
     ].join("\n"),
-    "Deterministic steps",
+    chalk.red("Deterministic Steps"),
   );
 }
 
 export function showMigrationSummary(summary: MigrationSummary): void {
-  note(summary.lines.join("\n"), "Migration branch ready");
+  note(summary.lines.join("\n"), redTitle("Migration branch ready"));
+}
+
+export function showPublishSkipped(reason: string): void {
+  note(reason, redTitle("Publish skipped"));
+}
+
+export function showPublishFailure(error: string): void {
+  note(chalk.red(error), redTitle("Publish failed"));
+}
+
+export function showFinalInstructions(worktree: MigrationWorktree, publish: PublishResult | null): void {
+  const orange = chalk.hex("#f97316");
+  const localCheckout = `git checkout ${worktree.branch}`;
+  const remoteCheckout = publish?.remoteBranch ? `git checkout ${publish.remoteBranch}` : "not pushed";
+  const commandLines = [
+    `  ${chalk.green(localCheckout)}`,
+    `  ${publish?.remoteBranch ? chalk.green(remoteCheckout) : remoteCheckout}`,
+    publish?.prUrl ? `  ${chalk.green(publish.prUrl)}` : null,
+  ].filter((line): line is string => line !== null);
+
+  process.stdout.write(
+    [
+      "",
+      chalk.green("Your pnpm migration is complete"),
+      "",
+      ...commandLines,
+      "",
+      orange("Thank you for using pnpm-migrate, brought to you by Santi Weight :) Have a great day!"),
+      "",
+      "",
+      "",
+    ].join("\n"),
+  );
 }
 
 export function showCleanupIntro(): void {
@@ -67,12 +105,12 @@ export function showCleanupIntro(): void {
       "- CI/Docker edge cases",
       "- remaining migration warnings",
     ].join("\n"),
-    "Recommended cleanup",
+    redTitle("Recommended Agentic Cleanup"),
   );
 }
 
 export function showCleanupSkipped(reason: string): void {
-  note(reason, "Cleanup skipped");
+  note(reason, redTitle("Cleanup skipped"));
 }
 
 export function showCleanupSummary(result: CleanupResult): void {
@@ -80,11 +118,9 @@ export function showCleanupSummary(result: CleanupResult): void {
     [
       `Agent: ${result.agentLabel}`,
       `Committed: ${result.commit.committed ? "yes" : "no"}`,
-      `Changed files: ${result.commit.changedFileCount}`,
-      `Log: ${result.logPath}`,
       result.commit.error ? `Commit note: ${result.commit.error}` : "",
     ].filter(Boolean).join("\n"),
-    "Cleanup complete",
+    redTitle("Cleanup complete"),
   );
 }
 

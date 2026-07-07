@@ -1,12 +1,25 @@
 import path from "node:path";
 import { spinner } from "@clack/prompts";
 import type { StageStatus } from "../migration/phases.ts";
-import { commitMigration, buildMigrationSummary, countChangedFiles } from "../core/summary.ts";
+import {
+  commitMigration,
+  buildMigrationSummary,
+  countChangedFiles,
+  type CommitResult,
+} from "../core/summary.ts";
 import { runCleanup } from "../core/cleanup.ts";
+import {
+  createPullRequest,
+  hasGitHubCli,
+  listRemotes,
+  pushBranch,
+  type PublishResult,
+} from "../core/publish.ts";
 import { createMigrationWorktree } from "../core/worktree.ts";
 import { detectEnvironment } from "../core/preflight.ts";
 import { runDeterministicMigration } from "../core/deterministic.ts";
 import { createChecklistRenderer } from "../ui/checklist.ts";
+import { createEnvironmentProgressRenderer } from "../ui/environment.ts";
 import {
   showDeterministicComplete,
   showDeterministicFailure,
@@ -15,13 +28,17 @@ import {
   showCleanupIntro,
   showCleanupSkipped,
   showCleanupSummary,
+  showFinalInstructions,
   showIntro,
   showMigrationSummary,
+  showPublishFailure,
+  showPublishSkipped,
+  redTitle,
   showWorktreeSafety,
   showUncommittedFinish,
 } from "../ui/cards.ts";
-import { askToContinue, chooseCleanupAgent } from "../ui/prompts.ts";
-import { minimumVisible, sectionPause, uiSpacer } from "../ui/timing.ts";
+import { askCreatePullRequest, askToContinue, chooseCleanupAgent, chooseRemote } from "../ui/prompts.ts";
+import { clearTerminalView, minimumVisible, sectionPause, uiDelay, uiSpacer } from "../ui/timing.ts";
 import type { PreflightEnvironment } from "../core/preflight.ts";
 
 export type InteractiveWorkflowOptions = {
@@ -29,72 +46,126 @@ export type InteractiveWorkflowOptions = {
   enginePath: string;
 };
 
-async function showEnvironmentProgress(env: PreflightEnvironment): Promise<void> {
-  const checks = [
-    {
-      start: "Checking Git repository",
-      stop: `Git detected: ${env.repoLabel}`,
-    },
-    {
-      start: "Checking current branch",
-      stop: `Branch: ${env.branch}`,
-    },
-    {
-      start: "Checking coding agents",
-      stop: `Agents available: ${env.agents.map((agent) => agent.label).join(", ")}`,
-    },
-  ];
+async function showEnvironmentProgress(
+  env: PreflightEnvironment,
+): Promise<void> {
+  const renderer = createEnvironmentProgressRenderer(env);
 
-  for (const check of checks) {
-    const itemSpinner = spinner();
-    itemSpinner.start(check.start);
-    await minimumVisible(() => undefined, 1200);
-    itemSpinner.stop(check.stop);
+  for (let index = 0; index < 3; index++) {
+    renderer.render(index);
+    await uiDelay(2200);
   }
+
+  renderer.render(3);
+  await uiDelay(500);
+  renderer.finish();
 }
 
-export async function runInteractiveWorkflow(options: InteractiveWorkflowOptions): Promise<void> {
+async function runPublishPhase(
+  worktree: ReturnType<typeof createMigrationWorktree>,
+  baseBranch: string,
+  autoApprove: boolean,
+): Promise<PublishResult | null> {
+  if (autoApprove) {
+    showPublishSkipped("Branch publishing is skipped in non-interactive auto-approve runs.");
+    return null;
+  }
+
+  const remoteName = await chooseRemote(listRemotes(worktree));
+  if (!remoteName) {
+    showPublishSkipped("No git remotes are configured for this repository.");
+    return null;
+  }
+
+  const publishSpinner = spinner();
+  publishSpinner.start(`Pushing branch to ${remoteName}`);
+  const pushed = pushBranch(worktree, remoteName);
+  publishSpinner.stop(pushed.pushed ? `Pushed branch to ${remoteName}` : `Push failed for ${remoteName}`);
+
+  if (!pushed.pushed) {
+    showPublishFailure(pushed.error ?? "git push failed");
+    return pushed;
+  }
+
+  if (!hasGitHubCli()) {
+    showPublishSkipped("GitHub CLI was not found, so no pull request was created.");
+    return pushed;
+  }
+
+  if (!(await askCreatePullRequest())) {
+    return pushed;
+  }
+
+  const prSpinner = spinner();
+  prSpinner.start("Creating pull request");
+  const pr = createPullRequest(worktree, baseBranch, remoteName);
+  prSpinner.stop(pr.prUrl ? "Pull request created" : "Pull request was not created");
+
+  if (pr.error) {
+    showPublishFailure(pr.error);
+    return pr;
+  }
+
+  return pr;
+}
+
+export async function runInteractiveWorkflow(
+  options: InteractiveWorkflowOptions,
+): Promise<void> {
+  clearTerminalView();
   showIntro();
 
-  const envSpinner = spinner();
-  envSpinner.start("Checking environment");
-  const env = await minimumVisible(() => detectEnvironment(options.enginePath), 1000);
+  const env = await minimumVisible(
+    () => detectEnvironment(options.enginePath),
+    1000,
+  );
 
   if (env.failures.length > 0) {
-    envSpinner.stop("Environment check failed");
     showFailures(env.failures);
     process.exit(1);
   }
 
-  envSpinner.stop("Environment check complete");
-  await sectionPause();
   await showEnvironmentProgress(env);
   await sectionPause();
 
   const worktreeSpinner = spinner();
   worktreeSpinner.start("Creating temporary git worktree");
   const worktree = await minimumVisible(() => createMigrationWorktree(env));
-  worktreeSpinner.stop(`Git worktree created: ${worktree.branch}`);
+  worktreeSpinner.stop(redTitle(`Git worktree created: ${worktree.branch}`));
   await sectionPause();
   showWorktreeSafety(worktree);
-  await sectionPause(1200);
+  await sectionPause(3000);
 
   showDeterministicIntro();
   await sectionPause(1200);
-  await askToContinue("Run deterministic npm -> pnpm migration?", options.autoApprove);
+  await askToContinue(
+    "Run deterministic npm -> pnpm migration?",
+    options.autoApprove,
+  );
+  uiSpacer();
+  await sectionPause(250);
 
   const tracePath = path.join(worktree.runRoot, "deterministic-phases.tsv");
   const checklist = createChecklistRenderer(tracePath);
-  const checklistState: { commit: StageStatus; running: boolean; worktree: StageStatus } = {
+  const checklistState: {
+    commit: StageStatus;
+    running: boolean;
+    worktree: StageStatus;
+  } = {
     commit: "pending",
     running: true,
     worktree: "done",
   };
   checklist.render(checklistState);
 
-  const result = await runDeterministicMigration(options.enginePath, worktree, tracePath, () => {
-    checklist.render(checklistState);
-  });
+  const result = await runDeterministicMigration(
+    options.enginePath,
+    worktree,
+    tracePath,
+    () => {
+      checklist.render(checklistState);
+    },
+  );
   checklistState.running = false;
 
   if (result.code !== 0) {
@@ -103,7 +174,6 @@ export async function runInteractiveWorkflow(options: InteractiveWorkflowOptions
     showMigrationSummary(
       buildMigrationSummary(
         worktree,
-        env.branch,
         {
           changedFileCount: countChangedFiles(worktree),
           committed: false,
@@ -123,9 +193,6 @@ export async function runInteractiveWorkflow(options: InteractiveWorkflowOptions
   checklist.render(checklistState);
   checklist.finish();
 
-  showMigrationSummary(buildMigrationSummary(worktree, env.branch, commitResult, result));
-  await sectionPause();
-
   if (!commitResult.committed) {
     showUncommittedFinish();
   }
@@ -134,31 +201,45 @@ export async function runInteractiveWorkflow(options: InteractiveWorkflowOptions
   await sectionPause();
 
   if (options.autoApprove) {
-    showCleanupSkipped("Agent cleanup is skipped in non-interactive auto-approve runs.");
-    showDeterministicComplete(result);
+    showCleanupSkipped(
+      "Agent cleanup is skipped in non-interactive auto-approve runs.",
+    );
+    showMigrationSummary(buildMigrationSummary(worktree, commitResult, result));
+    showFinalInstructions(worktree, null);
     return;
   }
 
   const selectedAgentId = await chooseCleanupAgent(env.agents);
   if (selectedAgentId === "skip") {
     showCleanupSkipped("The migration branch is ready for manual review.");
-    showDeterministicComplete(result);
+    const publish = await runPublishPhase(worktree, env.branch, options.autoApprove);
+    showMigrationSummary(buildMigrationSummary(worktree, commitResult, result));
+    showFinalInstructions(worktree, publish);
     return;
   }
 
-  const selectedAgent = env.agents.find((agent) => agent.id === selectedAgentId);
+  const selectedAgent = env.agents.find(
+    (agent) => agent.id === selectedAgentId,
+  );
   if (!selectedAgent) {
     showCleanupSkipped("Selected cleanup agent is no longer available.");
-    showDeterministicComplete(result);
+    const publish = await runPublishPhase(worktree, env.branch, options.autoApprove);
+    showMigrationSummary(buildMigrationSummary(worktree, commitResult, result));
+    showFinalInstructions(worktree, publish);
     return;
   }
 
   const cleanupSpinner = spinner();
   uiSpacer();
   cleanupSpinner.start(`Running cleanup with ${selectedAgent.label}`);
-  const cleanup = await runCleanup(selectedAgent, worktree, result.logPath, (message) => {
-    cleanupSpinner.message(`${selectedAgent.label}: ${message}`);
-  });
+  const cleanup = await runCleanup(
+    selectedAgent,
+    worktree,
+    result.logPath,
+    (message) => {
+      cleanupSpinner.message(`${selectedAgent.label}: ${message}`);
+    },
+  );
   cleanupSpinner.stop(
     cleanup.run.code === 0
       ? `Cleanup finished with ${selectedAgent.label}`
@@ -172,5 +253,11 @@ export async function runInteractiveWorkflow(options: InteractiveWorkflowOptions
     process.exit(1);
   }
 
-  showDeterministicComplete(result);
+  const finalCommitResult: CommitResult = {
+    ...commitResult,
+    changedFileCount: commitResult.changedFileCount + cleanup.commit.changedFileCount,
+  };
+  const publish = await runPublishPhase(worktree, env.branch, options.autoApprove);
+  showMigrationSummary(buildMigrationSummary(worktree, finalCommitResult, result));
+  showFinalInstructions(worktree, publish);
 }

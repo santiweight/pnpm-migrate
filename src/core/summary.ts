@@ -1,4 +1,4 @@
-import { readdirSync, rmSync } from "node:fs";
+import { readdirSync, rmSync, symlinkSync } from "node:fs";
 import path from "node:path";
 import { runCapture, type LoggedResult } from "../utils/command.ts";
 import type { MigrationWorktree } from "./worktree.ts";
@@ -18,9 +18,27 @@ type CommitOptions = {
   message: string;
 };
 
+const attributionBody = [
+  "Created with pnpm-migrate.",
+  "https://github.com/santiweight/pnpm-migrate",
+];
+
 export type MigrationSummary = {
   lines: string[];
 };
+
+function displayLogPath(logPath: string): string {
+  const shortRoot = process.env.PNPM_MIGRATE_SHORT_LOG_ROOT || "/tmp";
+  const shortPath = path.join(shortRoot, `${path.basename(path.dirname(logPath))}-${path.basename(logPath)}`);
+
+  try {
+    rmSync(shortPath, { force: true });
+    symlinkSync(logPath, shortPath);
+    return shortPath;
+  } catch {
+    return path.basename(logPath);
+  }
+}
 
 export function countChangedFiles(worktree: MigrationWorktree): number {
   return runCapture("git", ["status", "--short", ...nonDependencyPathspec], { cwd: worktree.worktreePath })
@@ -88,6 +106,8 @@ export function commitWorktree(worktree: MigrationWorktree, options: CommitOptio
       "commit",
       "-m",
       options.message,
+      "-m",
+      attributionBody.join("\n"),
     ],
     { cwd: worktree.worktreePath },
   );
@@ -102,7 +122,7 @@ export function commitWorktree(worktree: MigrationWorktree, options: CommitOptio
 export function commitMigration(worktree: MigrationWorktree): CommitResult {
   return commitWorktree(worktree, {
     allowNoChanges: false,
-    message: "Migrate from npm to pnpm",
+    message: "Migrate project from npm to pnpm",
   });
 }
 
@@ -115,23 +135,15 @@ export function commitCleanup(worktree: MigrationWorktree): CommitResult {
 
 export function buildMigrationSummary(
   worktree: MigrationWorktree,
-  baseBranch: string,
   commitResult: CommitResult,
   engineResult?: LoggedResult,
 ): MigrationSummary {
-  const diffStat = commitResult.committed
-    ? runCapture("git", ["diff", "--stat", `${baseBranch}...HEAD`], { cwd: worktree.worktreePath }).stdout
-    : runCapture("git", ["diff", "--stat", ...nonDependencyPathspec], { cwd: worktree.worktreePath }).stdout;
-
   return {
     lines: [
       `Branch: ${worktree.branch}`,
-      `Worktree: ${worktree.worktreePath}`,
-      `Committed: ${commitResult.committed ? "yes" : "no"}`,
       `Changed files: ${commitResult.changedFileCount}`,
-      engineResult?.logPath ? `Log: ${engineResult.logPath}` : "",
+      engineResult?.logPath ? `Log: ${displayLogPath(engineResult.logPath)}` : "",
       commitResult.error ? `Commit note: ${commitResult.error}` : "",
-      diffStat ? `\n${diffStat}` : "",
     ].filter(Boolean),
   };
 }

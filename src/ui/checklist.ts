@@ -31,15 +31,13 @@ export function createChecklistRenderer(tracePath: string): ChecklistRenderer {
     }
 
     const statuses = resolveStageStatuses(tracePath, state);
-    const active = statuses.find((stage) => stage.status === "active");
     const failed = statuses.find((stage) => stage.status === "failed");
+    const statusLine = failed ? `│  Failed: ${failed.label}` : null;
     const lines = [
-      "◇  Deterministic migration",
+      `◇  ${chalk.red("Deterministic Migration")}`,
       "│",
       ...statuses.map(lineFor),
-      "│",
-      failed ? `│  Failed: ${failed.label}` : active ? `│  Current: ${active.label}` : "│  Current: complete",
-      "│",
+      ...(statusLine ? ["│", statusLine, "│"] : ["│"]),
     ];
     const text = lines.join("\n");
 

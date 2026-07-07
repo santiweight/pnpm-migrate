@@ -2,15 +2,6 @@ import type { AgentId } from "./detect.ts";
 
 export type AgentStatusHandler = (message: string) => void;
 
-function compactText(value: string): string | null {
-  const text = value.replace(/\s+/g, " ").trim();
-  if (!text || text.length < 8) {
-    return null;
-  }
-
-  return text.length > 82 ? `${text.slice(0, 79)}...` : text;
-}
-
 function toolStatus(name: string): string {
   const normalized = name.toLowerCase();
 
@@ -45,24 +36,6 @@ function extractJsonStatuses(value: unknown): string[] {
     statuses.push(toolStatus(name || toolName));
   }
 
-  if (type === "content_block_delta" && record.delta && typeof record.delta === "object") {
-    const delta = record.delta as Record<string, unknown>;
-    if (typeof delta.text === "string") {
-      const text = compactText(delta.text);
-      if (text) statuses.push(text);
-    }
-  }
-
-  if (typeof record.message === "string") {
-    const text = compactText(record.message);
-    if (text) statuses.push(text);
-  }
-
-  if (typeof record.text === "string") {
-    const text = compactText(record.text);
-    if (text) statuses.push(text);
-  }
-
   for (const value of Object.values(record)) {
     if (Array.isArray(value)) {
       for (const item of value) {
@@ -88,8 +61,7 @@ function extractPlainStatuses(line: string): string[] {
     return ["Running verification commands"];
   }
 
-  const text = compactText(line);
-  return text ? [text] : [];
+  return [];
 }
 
 export function createAgentStatusParser(_agentId: AgentId, onStatus?: AgentStatusHandler): (chunk: string) => void {
