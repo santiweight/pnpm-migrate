@@ -16,11 +16,13 @@ import {
   showCleanupIntro,
   showCleanupSkipped,
   showCleanupSummary,
+  showIntro,
   showMigrationSummary,
   showWorktreeSafety,
   showUncommittedFinish,
 } from "../ui/cards.ts";
 import { askToContinue, chooseCleanupAgent } from "../ui/prompts.ts";
+import { minimumVisible, sectionPause } from "../ui/timing.ts";
 
 export type InteractiveWorkflowOptions = {
   autoApprove: boolean;
@@ -28,22 +30,33 @@ export type InteractiveWorkflowOptions = {
 };
 
 export async function runInteractiveWorkflow(options: InteractiveWorkflowOptions): Promise<void> {
-  const env = detectEnvironment(options.enginePath);
+  showIntro();
+
+  const envSpinner = spinner();
+  envSpinner.start("Checking environment");
+  const env = await minimumVisible(() => detectEnvironment(options.enginePath));
 
   if (env.failures.length > 0) {
+    envSpinner.stop("Environment check failed");
     showFailures(env.failures);
     process.exit(1);
   }
 
+  envSpinner.stop("Environment check complete");
+  await sectionPause();
   showEnvironment(env);
+  await sectionPause();
 
   const worktreeSpinner = spinner();
   worktreeSpinner.start("Creating temporary git worktree");
-  const worktree = createMigrationWorktree(env);
+  const worktree = await minimumVisible(() => createMigrationWorktree(env));
   worktreeSpinner.stop(`Git worktree created: ${worktree.branch}`);
+  await sectionPause();
   showWorktreeSafety(worktree);
+  await sectionPause();
 
   showDeterministicIntro();
+  await sectionPause();
   await askToContinue("Run deterministic npm -> pnpm migration?", options.autoApprove);
 
   const tracePath = path.join(worktree.runRoot, "deterministic-phases.tsv");
@@ -87,12 +100,14 @@ export async function runInteractiveWorkflow(options: InteractiveWorkflowOptions
   checklist.finish();
 
   showMigrationSummary(buildMigrationSummary(worktree, env.branch, commitResult, result));
+  await sectionPause();
 
   if (!commitResult.committed) {
     showUncommittedFinish();
   }
 
   showCleanupIntro();
+  await sectionPause();
 
   if (options.autoApprove) {
     showCleanupSkipped("Agent cleanup is skipped in non-interactive auto-approve runs.");
@@ -123,6 +138,7 @@ export async function runInteractiveWorkflow(options: InteractiveWorkflowOptions
       : `Cleanup failed with ${selectedAgent.label}`,
   );
   showCleanupSummary(cleanup);
+  await sectionPause();
 
   if (cleanup.run.code !== 0 || cleanup.commit.error) {
     process.exit(1);

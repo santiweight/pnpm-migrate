@@ -6,14 +6,16 @@ import type { MigrationWorktree } from "../core/worktree.ts";
 import type { LoggedResult } from "../utils/command.ts";
 import type { CleanupResult } from "../core/cleanup.ts";
 
-export function showFailures(failures: string[]): void {
+export function showIntro(): void {
   intro(`${chalk.bold("pnpm-migrate")} ${chalk.dim("npm -> pnpm")}`);
+}
+
+export function showFailures(failures: string[]): void {
   note(failures.map((failure) => `${chalk.red("✗")} ${failure}`).join("\n"), "Cannot continue");
   outro(chalk.red("Fix the failing conditions and run pnpm-migrate again."));
 }
 
 export function showEnvironment(env: PreflightEnvironment): void {
-  intro(`${chalk.bold("pnpm-migrate")} ${chalk.dim("npm -> pnpm")}`);
   note(
     [
       `${chalk.green("✓")} Git detected: ${env.repoLabel}`,
