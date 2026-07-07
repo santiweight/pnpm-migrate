@@ -22,7 +22,7 @@ import {
   showUncommittedFinish,
 } from "../ui/cards.ts";
 import { askToContinue, chooseCleanupAgent } from "../ui/prompts.ts";
-import { minimumVisible, sectionPause } from "../ui/timing.ts";
+import { minimumVisible, sectionPause, uiSpacer } from "../ui/timing.ts";
 
 export type InteractiveWorkflowOptions = {
   autoApprove: boolean;
@@ -130,13 +130,17 @@ export async function runInteractiveWorkflow(options: InteractiveWorkflowOptions
   }
 
   const cleanupSpinner = spinner();
+  uiSpacer();
   cleanupSpinner.start(`Running cleanup with ${selectedAgent.label}`);
-  const cleanup = await runCleanup(selectedAgent, worktree, result.logPath);
+  const cleanup = await runCleanup(selectedAgent, worktree, result.logPath, (message) => {
+    cleanupSpinner.message(`${selectedAgent.label}: ${message}`);
+  });
   cleanupSpinner.stop(
     cleanup.run.code === 0
       ? `Cleanup finished with ${selectedAgent.label}`
       : `Cleanup failed with ${selectedAgent.label}`,
   );
+  uiSpacer();
   showCleanupSummary(cleanup);
   await sectionPause();
 

@@ -42,6 +42,7 @@ export function runLogged(
     cwd: string;
     env?: NodeJS.ProcessEnv;
     logPath: string;
+    onOutput?: (chunk: string, stream: "stdout" | "stderr") => void;
     onTick?: () => void;
   },
 ): Promise<LoggedResult> {
@@ -54,8 +55,14 @@ export function runLogged(
     });
     const interval = setInterval(() => options.onTick?.(), 300);
 
-    child.stdout.pipe(log);
-    child.stderr.pipe(log);
+    child.stdout.on("data", (chunk: Buffer) => {
+      log.write(chunk);
+      options.onOutput?.(chunk.toString("utf8"), "stdout");
+    });
+    child.stderr.on("data", (chunk: Buffer) => {
+      log.write(chunk);
+      options.onOutput?.(chunk.toString("utf8"), "stderr");
+    });
 
     child.on("exit", (code, signal) => {
       clearInterval(interval);

@@ -28,3 +28,13 @@ export async function minimumVisible<T>(work: () => T | Promise<T>, ms = 650): P
     await sectionPause(ms - (Date.now() - start));
   }
 }
+
+export function uiSpacer(lines = 1): void {
+  if (!process.stdout.isTTY) {
+    return;
+  }
+
+  for (let i = 0; i < lines; i++) {
+    process.stdout.write("│\n");
+  }
+}

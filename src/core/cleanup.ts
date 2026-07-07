@@ -2,6 +2,7 @@ import path from "node:path";
 import { readFileSync } from "node:fs";
 import type { Agent, AgentId } from "../agents/detect.ts";
 import { runAgent } from "../agents/run.ts";
+import type { AgentStatusHandler } from "../agents/status.ts";
 import { commitCleanup, type CommitResult } from "./summary.ts";
 import type { MigrationWorktree } from "./worktree.ts";
 import type { LoggedResult } from "../utils/command.ts";
@@ -55,9 +56,10 @@ export async function runCleanup(
   agent: Agent,
   worktree: MigrationWorktree,
   deterministicLogPath: string,
+  onStatus?: AgentStatusHandler,
 ): Promise<CleanupResult> {
   const logPath = path.join(worktree.runRoot, `cleanup-${agent.id}.log`);
-  const run = await runAgent(agent.id, buildCleanupPrompt(worktree, deterministicLogPath), worktree, logPath);
+  const run = await runAgent(agent.id, buildCleanupPrompt(worktree, deterministicLogPath), worktree, logPath, onStatus);
 
   if (run.code !== 0) {
     return {

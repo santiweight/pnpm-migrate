@@ -26,6 +26,7 @@ writeFileSync(
     "#!/usr/bin/env bash",
     "set -euo pipefail",
     "printf '%s\\n' \"$@\" > cleanup-agent.args",
+    "printf '%s\\n' '{\"type\":\"tool_use\",\"name\":\"Read\"}'",
     "printf 'cleanup ran\\n' > CLEANUP.md",
   ].join("\n"),
 );
@@ -50,7 +51,10 @@ const worktree: MigrationWorktree = {
   worktreePath: project,
 };
 
-const result = await runCleanup({ id: "claude", label: "Claude Code" }, worktree, deterministicLog);
+const statuses: string[] = [];
+const result = await runCleanup({ id: "claude", label: "Claude Code" }, worktree, deterministicLog, (message) => {
+  statuses.push(message);
+});
 
 if (result.run.code !== 0) {
   throw new Error(`cleanup runner failed: ${result.run.code}`);
@@ -66,6 +70,10 @@ if (!existsSync(path.join(project, "CLEANUP.md"))) {
 
 if (!readFileSync(path.join(project, "cleanup-agent.args"), "utf8").includes("temporary git worktree")) {
   throw new Error("cleanup prompt was not passed to the agent");
+}
+
+if (!statuses.includes("Inspecting migration files")) {
+  throw new Error(`cleanup status callback did not receive streamed activity: ${statuses.join(", ")}`);
 }
 
 const subject = run("git", ["log", "-1", "--pretty=%s"], project);
