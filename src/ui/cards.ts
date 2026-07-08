@@ -6,6 +6,7 @@ import { displayWorktreePath, type MigrationWorktree } from "../core/worktree.ts
 import type { LoggedResult } from "../utils/command.ts";
 import type { CleanupResult } from "../core/cleanup.ts";
 import type { PublishResult } from "../core/publish.ts";
+import type { PullRequestGreenResult } from "../core/pr-green.ts";
 
 export function redTitle(value: string): string {
   return chalk.red(value);
@@ -48,14 +49,14 @@ export function showWorktreeSafety(worktree: MigrationWorktree): void {
 export function showDeterministicIntro(): void {
   note(
     [
-      "This stage runs the basic no-regrets migration:",
-      "- migrate npm config -> pnpm",
-      "- migrate CI, Docker, documentation",
-      "- verify migration worked",
-      "",
-      "No coding agent is involved in this stage.",
+      "The migration will perform the following steps:",
+      "1. deterministic migrations",
+      "2. agent will polish the migration (docs, CI, Dockerfiles)",
+      "3. agent will test the migration works",
+      "4. PR created",
+      "5. agent nurses the PR to green",
     ].join("\n"),
-    chalk.red("Deterministic Steps"),
+    chalk.red("Run pnpm-migrate"),
   );
 }
 
@@ -71,7 +72,11 @@ export function showPublishFailure(error: string): void {
   note(chalk.red(error), redTitle("Publish failed"));
 }
 
-export function showFinalInstructions(worktree: MigrationWorktree, publish: PublishResult | null): void {
+export function showFinalInstructions(
+  worktree: MigrationWorktree,
+  publish: PublishResult | null,
+  prGreen: PullRequestGreenResult | null = null,
+): void {
   const orange = chalk.hex("#f97316");
   const localCheckout = `git checkout ${worktree.branch}`;
   const remoteCheckout = publish?.remoteBranch ? `git checkout ${publish.remoteBranch}` : "not pushed";
@@ -79,6 +84,10 @@ export function showFinalInstructions(worktree: MigrationWorktree, publish: Publ
     `  ${chalk.green(localCheckout)}`,
     `  ${publish?.remoteBranch ? chalk.green(remoteCheckout) : remoteCheckout}`,
     publish?.prUrl ? `  ${chalk.green(publish.prUrl)}` : null,
+    prGreen?.passed ? `  ${chalk.green("PR checks passed")}` : null,
+    prGreen && !prGreen.skipped && !prGreen.passed
+      ? `  ${chalk.red(`PR checks still need attention${prGreen.lastLogPath ? `: ${prGreen.lastLogPath}` : ""}`)}`
+      : null,
   ].filter((line): line is string => line !== null);
 
   process.stdout.write(

@@ -23,7 +23,7 @@
   },
   "scripts": {
     "dev": "node src/cli.mjs",
-    "check": "tsc --noEmit && node --check src/cli.mjs && bash -n install.sh pnpm-migrate.sh && tsx scripts/test-cleanup-agent.ts && scripts/benchmark-suite.sh fixture"
+    "check": "tsc --noEmit && node --check src/cli.mjs && bash -n install.sh pnpm-migrate.sh && tsx scripts/test-cleanup-agent.ts && tsx scripts/test-pr-green.ts && scripts/benchmark-suite.sh fixture"
   },
   "engines": {
     "node": ">=20"

@@ -1,4 +1,5 @@
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 import { spinner } from "@clack/prompts";
 import type { StageStatus } from "../migration/phases.ts";
 import {
@@ -15,6 +16,7 @@ import {
   pushBranch,
   type PublishResult,
 } from "../core/publish.ts";
+import { ensurePullRequestGreen, type PullRequestGreenResult } from "../core/pr-green.ts";
 import { createMigrationWorktree } from "../core/worktree.ts";
 import { detectEnvironment } from "../core/preflight.ts";
 import { runDeterministicMigration } from "../core/deterministic.ts";
@@ -229,6 +231,7 @@ export async function runInteractiveWorkflow(
     return;
   }
 
+  const agentSessionId = selectedAgent.id === "claude" ? randomUUID() : undefined;
   const cleanupSpinner = spinner();
   uiSpacer();
   cleanupSpinner.start(`Running cleanup with ${selectedAgent.label}`);
@@ -239,6 +242,7 @@ export async function runInteractiveWorkflow(
     (message) => {
       cleanupSpinner.message(`${selectedAgent.label}: ${message}`);
     },
+    { sessionId: agentSessionId },
   );
   cleanupSpinner.stop(
     cleanup.run.code === 0
@@ -258,6 +262,27 @@ export async function runInteractiveWorkflow(
     changedFileCount: commitResult.changedFileCount + cleanup.commit.changedFileCount,
   };
   const publish = await runPublishPhase(worktree, env.branch, options.autoApprove);
+  let prGreen: PullRequestGreenResult | null = null;
+
+  if (publish?.prUrl) {
+    const prGreenSpinner = spinner();
+    uiSpacer();
+    prGreenSpinner.start("Waiting for pull request checks");
+    prGreen = await ensurePullRequestGreen(selectedAgent, worktree, publish, {
+      maxFixAttempts: 2,
+      onStatus: (message) => {
+        prGreenSpinner.message(`${selectedAgent.label}: ${message}`);
+      },
+      sessionId: agentSessionId,
+    });
+    prGreenSpinner.stop(
+      prGreen.passed
+        ? "Pull request checks passed"
+        : "Pull request checks did not pass",
+    );
+    uiSpacer();
+  }
+
   showMigrationSummary(buildMigrationSummary(worktree, finalCommitResult, result));
-  showFinalInstructions(worktree, publish);
+  showFinalInstructions(worktree, publish, prGreen);
 }

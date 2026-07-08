@@ -133,6 +133,13 @@ export function commitCleanup(worktree: MigrationWorktree): CommitResult {
   });
 }
 
+export function commitCiFix(worktree: MigrationWorktree): CommitResult {
+  return commitWorktree(worktree, {
+    allowNoChanges: true,
+    message: "Fix pnpm migration CI",
+  });
+}
+
 export function buildMigrationSummary(
   worktree: MigrationWorktree,
   commitResult: CommitResult,

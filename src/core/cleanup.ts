@@ -36,7 +36,7 @@ function buildCleanupPrompt(worktree: MigrationWorktree, deterministicLogPath: s
     "1. Inspect the migration commit and current working tree.",
     "2. Review README/docs, AGENTS.md, CLAUDE.md, Dockerfiles, GitHub Actions, package.json scripts, and workspace config for stale npm/package-lock/npx wording or commands.",
     "3. Fix only migration-related leftovers: docs wording, pnpm install/test commands, CI/Docker package-manager setup, and small pnpm-specific verification issues.",
-    "4. Run focused verification when practical, preferring the package manager scripts already defined by the repo.",
+    "4. Run light local verification when practical: pnpm install, then the repo's most relevant test/build script.",
     "5. Leave the worktree with only intended migration cleanup changes. Do not commit.",
     "",
     "Constraints:",
@@ -57,9 +57,17 @@ export async function runCleanup(
   worktree: MigrationWorktree,
   deterministicLogPath: string,
   onStatus?: AgentStatusHandler,
+  options: { sessionId?: string } = {},
 ): Promise<CleanupResult> {
   const logPath = path.join(worktree.runRoot, `cleanup-${agent.id}.log`);
-  const run = await runAgent(agent.id, buildCleanupPrompt(worktree, deterministicLogPath), worktree, logPath, onStatus);
+  const run = await runAgent(
+    agent.id,
+    buildCleanupPrompt(worktree, deterministicLogPath),
+    worktree,
+    logPath,
+    onStatus,
+    options,
+  );
 
   if (run.code !== 0) {
     return {

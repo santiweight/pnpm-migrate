@@ -55,7 +55,7 @@ const worktree: MigrationWorktree = {
 const statuses: string[] = [];
 const result = await runCleanup({ id: "claude", label: "Claude Code" }, worktree, deterministicLog, (message) => {
   statuses.push(message);
-});
+}, { sessionId: "00000000-0000-4000-8000-000000000001" });
 
 if (result.run.code !== 0) {
   throw new Error(`cleanup runner failed: ${result.run.code}`);
@@ -75,6 +75,10 @@ if (!readFileSync(path.join(project, "cleanup-agent.args"), "utf8").includes("te
 
 if (!readFileSync(path.join(project, "cleanup-agent.args"), "utf8").includes("--verbose")) {
   throw new Error("Claude stream-json cleanup must include --verbose");
+}
+
+if (!readFileSync(path.join(project, "cleanup-agent.args"), "utf8").includes("00000000-0000-4000-8000-000000000001")) {
+  throw new Error("Claude cleanup must receive the shared session id");
 }
 
 if (!statuses.includes("Inspecting migration files")) {

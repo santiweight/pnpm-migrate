@@ -9,15 +9,19 @@ export function runAgent(
   worktree: MigrationWorktree,
   logPath: string,
   onStatus?: AgentStatusHandler,
+  options: { sessionId?: string } = {},
 ): Promise<LoggedResult> {
   const parseStatus = createAgentStatusParser(agentId, onStatus);
 
   if (agentId === "claude") {
+    const sessionArgs = options.sessionId ? ["--session-id", options.sessionId] : [];
+
     return runLogged(
       "claude",
       [
         "-p",
         prompt,
+        ...sessionArgs,
         "--permission-mode",
         "auto",
         "--add-dir",

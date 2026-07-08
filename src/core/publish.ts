@@ -1,4 +1,5 @@
-import { commandOk, runCapture } from "../utils/command.ts";
+import path from "node:path";
+import { commandOk, runCapture, runLogged } from "../utils/command.ts";
 import type { MigrationWorktree } from "./worktree.ts";
 
 export type PublishResult = {
@@ -88,5 +89,58 @@ export function createPullRequest(
     pushed: true,
     remoteBranch: `${remoteName}/${worktree.branch}`,
     remoteName,
+  };
+}
+
+export type PullRequestChecksResult = {
+  error: string | null;
+  logPath: string;
+  passed: boolean;
+};
+
+export function getPullRequestCheckSummary(worktree: MigrationWorktree, prUrl: string): string {
+  const checks = runCapture(
+    "gh",
+    [
+      "pr",
+      "checks",
+      prUrl,
+      "--json",
+      "name,bucket,state,link,workflow",
+    ],
+    { cwd: worktree.worktreePath },
+  );
+
+  if (checks.status !== 0) {
+    return checks.stderr || checks.stdout || "Could not read pull request checks.";
+  }
+
+  return checks.stdout;
+}
+
+export async function waitForPullRequestChecks(
+  worktree: MigrationWorktree,
+  prUrl: string,
+  attempt: number,
+): Promise<PullRequestChecksResult> {
+  const logPath = path.join(worktree.runRoot, `pr-checks-${attempt}.log`);
+  const checks = await runLogged(
+    "gh",
+    [
+      "pr",
+      "checks",
+      prUrl,
+      "--watch",
+      "--fail-fast",
+      "--interval",
+      "10",
+    ],
+    { cwd: worktree.worktreePath, logPath },
+  );
+
+  return {
+    error: checks.code === 0 ? null : `Pull request checks exited with code ${checks.code}`,
+    logPath,
+    passed: checks.code === 0,
   };
 }
