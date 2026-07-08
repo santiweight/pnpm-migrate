@@ -1,5 +1,7 @@
 # pnpm-migrate
 
+[![CI](https://github.com/santiweight/pnpm-migrate/actions/workflows/ci.yml/badge.svg)](https://github.com/santiweight/pnpm-migrate/actions/workflows/ci.yml)
+
 cd into a repo that uses `npm`, and run:
 
 ```bash
