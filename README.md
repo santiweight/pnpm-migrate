@@ -10,7 +10,7 @@ curl -fsSL https://raw.githubusercontent.com/santiweight/pnpm-migrate/main/insta
 
 `pnpm-migrate` will migrate the basics, and then migrate the annoying stuff: readmes, dockerfiles, contributor docs, and then test that it works before making a PR for you.
 
-## pnpm-migrate is faster than Claude
+## 🚀 pnpm-migrate is faster than Claude
 
 `pnpm-migrate` is **16x faster than asking Claude Code to do the npm -> pnpm migration from scratch**. Measured across 10 real-world repos.
 
@@ -23,7 +23,7 @@ curl -fsSL https://raw.githubusercontent.com/santiweight/pnpm-migrate/main/insta
 
 Repos migrated: `bpmn-js`, `dayjs`, `dompurify`, `github-readme-stats`, `html5-boilerplate`, `jquery`, `jsdoc`, `lodash`, `markdown-it`, `uuid`.
 
-## pnpm-migrate is simple
+## 😌 pnpm-migrate is simple
 
 ### ☀️🌈😊 pnpm-migrate
 
