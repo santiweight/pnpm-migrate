@@ -50,11 +50,11 @@ export function showDeterministicIntro(): void {
   note(
     [
       "The migration will perform the following steps:",
-      "1. deterministic migrations",
-      "2. agent will polish the migration (docs, CI, Dockerfiles)",
-      "3. agent will test the migration works",
-      "4. PR created",
-      "5. agent nurses the PR to green",
+      "  1. deterministic migrations",
+      "  2. agent will polish the migration (docs, CI, Dockerfiles)",
+      "  3. agent will test the migration works",
+      "  4. PR created",
+      "  5. agent nurses the PR to green",
     ].join("\n"),
     chalk.red("Run pnpm-migrate"),
   );
@@ -109,10 +109,10 @@ export function showCleanupIntro(): void {
   note(
     [
       "Coding agent will now review and polish the migration:",
-      "- README/docs wording",
-      "- pnpm-specific install/test issues",
-      "- CI/Docker edge cases",
-      "- remaining migration warnings",
+      "  - README/docs wording",
+      "  - pnpm-specific install/test issues",
+      "  - CI/Docker edge cases",
+      "  - remaining migration warnings",
     ].join("\n"),
     redTitle("Agentic Cleanup"),
   );
