@@ -141,7 +141,7 @@ export async function runInteractiveWorkflow(
   showDeterministicIntro();
   await sectionPause(1200);
   await askToContinue(
-    "Run deterministic npm -> pnpm migration?",
+    "Run pnpm migration?",
     options.autoApprove,
   );
   uiSpacer();
