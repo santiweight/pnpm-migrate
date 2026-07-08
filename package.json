@@ -2,6 +2,7 @@
   "name": "pnpm-migrate",
   "version": "0.1.0",
   "description": "Migrate npm projects to pnpm from an isolated git worktree.",
+  "license": "MIT",
   "type": "module",
   "packageManager": "pnpm@11.8.0",
   "repository": {
