@@ -1,6 +1,6 @@
 # pnpm-migrate
 
-cd into a repo that uses `npm`, and run this command:
+cd into a repo that uses `npm`, and run:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/santiweight/pnpm-migrate/main/install.sh | bash
@@ -23,22 +23,13 @@ Repos migrated: `bpmn-js`, `dayjs`, `dompurify`, `github-readme-stats`, `html5-b
 
 ## pnpm-migrate is simple
 
-pnpm-migrate (feels great; no stress):
- 1. paste the one-liner
- 2. press enter
- 3. get back a green PR
+### ☀️🌈😊 pnpm-migrate
 
-Regular migration (pull your hair out):
- 1. look for the pnpm migration docs
- 2. run commands manually
- 3. mess up the steps; start again
- 4. tell Claude to migrate CI
- 5. realize you forgot to migrate docs
- 6. tell Claude to migrate docs
- 7. babysit the PR for 4 days across 10 rebases
- 8. coworker complains that the docs are broken
- 9. fix the docs (or forget)
- 10. wonder why you didn't use `pnpm-migrate`
+Paste one-liner. Press enter. Approve the PR that already passed CI.
+
+### 😭😵‍💫😫 Regular migration
+
+Look for the pnpm migration docs. Run commands manually. Mess up the steps; start again. Tell Claude to migrate CI. Realize you forgot to migrate docs. Babysit the PR for 4 days across 10 rebases. Fix the docs, or forget. Wonder why you didn't use `pnpm-migrate`.
 
 # Current Features
 
