@@ -28,6 +28,7 @@ import {
   showDeterministicIntro,
   showFailures,
   showCleanupIntro,
+  showCleanupWaiting,
   showCleanupSkipped,
   showCleanupSummary,
   showFinalInstructions,
@@ -35,6 +36,7 @@ import {
   showMigrationSummary,
   showPublishFailure,
   showPublishSkipped,
+  showPrFixWaiting,
   redTitle,
   showWorktreeSafety,
   showUncommittedFinish,
@@ -219,6 +221,8 @@ export async function runInteractiveWorkflow(
   const agentSessionId = selectedAgent.id === "claude" ? randomUUID() : undefined;
   const cleanupSpinner = spinner();
   uiSpacer();
+  showCleanupWaiting();
+  await sectionPause(1000);
   cleanupSpinner.start(`Running cleanup with ${selectedAgent.label}`);
   const cleanup = await runCleanup(
     selectedAgent,
@@ -255,6 +259,13 @@ export async function runInteractiveWorkflow(
     prGreenSpinner.start("Waiting for pull request checks");
     prGreen = await ensurePullRequestGreen(selectedAgent, worktree, publish, {
       maxFixAttempts: 2,
+      onFixAttempt: () => {
+        prGreenSpinner.stop("Pull request checks failed");
+        uiSpacer();
+        showPrFixWaiting();
+        uiSpacer();
+        prGreenSpinner.start(`Running CI fix with ${selectedAgent.label}`);
+      },
       onStatus: (message) => {
         prGreenSpinner.message(`${selectedAgent.label}: ${message}`);
       },

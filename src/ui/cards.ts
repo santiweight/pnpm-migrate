@@ -81,21 +81,22 @@ export function showFinalInstructions(
   const localCheckout = `git checkout ${worktree.branch}`;
   const remoteCheckout = publish?.remoteBranch ? `git checkout ${publish.remoteBranch}` : "not pushed";
   const commandLines = [
-    `  ${chalk.green(localCheckout)}`,
-    `  ${publish?.remoteBranch ? chalk.green(remoteCheckout) : remoteCheckout}`,
-    publish?.prUrl ? `  ${chalk.green(publish.prUrl)}` : null,
+    `  ${chalk.gray(localCheckout)}`,
+    `  ${publish?.remoteBranch ? chalk.gray(remoteCheckout) : remoteCheckout}`,
+    publish?.prUrl ? `  ${formatTerminalLink(publish.prUrl)}` : null,
     prGreen?.passed ? `  ${chalk.green("PR checks passed")}` : null,
     prGreen && !prGreen.skipped && !prGreen.passed
       ? `  ${chalk.red(`PR checks still need attention${prGreen.lastLogPath ? `: ${prGreen.lastLogPath}` : ""}`)}`
       : null,
   ].filter((line): line is string => line !== null);
+  const spacedCommandLines = commandLines.flatMap((line) => [line, ""]);
 
   process.stdout.write(
     [
       "",
       chalk.green("Your pnpm migration is complete"),
       "",
-      ...commandLines,
+      ...spacedCommandLines,
       "",
       orange("Thank you for using pnpm-migrate, brought to you by Santi Weight :) Have a great day!"),
       "",
@@ -103,6 +104,16 @@ export function showFinalInstructions(
       "",
     ].join("\n"),
   );
+}
+
+function formatTerminalLink(url: string): string {
+  const text = chalk.blue(url);
+
+  if (!process.stdout.isTTY || process.env.NO_COLOR) {
+    return text;
+  }
+
+  return `\u001B]8;;${url}\u0007${text}\u001B]8;;\u0007`;
 }
 
 export function showCleanupIntro(): void {
@@ -116,6 +127,14 @@ export function showCleanupIntro(): void {
     ].join("\n"),
     redTitle("Agentic Cleanup"),
   );
+}
+
+export function showCleanupWaiting(): void {
+  note("Agent is cleaning up the migration. This can take 1-5 minutes.", redTitle("Agent running"));
+}
+
+export function showPrFixWaiting(): void {
+  note("Pull request checks failed. Agent is fixing the migration and will re-check CI.", redTitle("Agent fixing CI"));
 }
 
 export function showCleanupSkipped(reason: string): void {

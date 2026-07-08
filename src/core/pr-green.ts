@@ -41,6 +41,7 @@ export async function ensurePullRequestGreen(
   publish: PublishResult,
   options: {
     maxFixAttempts?: number;
+    onFixAttempt?: (attempt: number) => void;
     onStatus?: AgentStatusHandler;
     sessionId?: string;
   } = {},
@@ -84,6 +85,7 @@ export async function ensurePullRequestGreen(
     }
 
     const checkSummary = getPullRequestCheckSummary(worktree, publish.prUrl);
+    options.onFixAttempt?.(attempt + 1);
     const fixLogPath = path.join(worktree.runRoot, `pr-green-${agent.id}-${attempt + 1}.log`);
     const fix = await runAgent(
       agent.id,
