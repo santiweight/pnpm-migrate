@@ -464,10 +464,10 @@ for (let i = 0; i < lines.length; i++) {
   const restOfJob = lines.slice(stepEnd).join('\n');
   if (!/\bpnpm\b/.test(step) && !/\bpnpm\b/.test(restOfJob)) continue;
 
-  const alreadyNext = lines[stepEnd]?.trim() === '- run: corepack enable';
+  const alreadyPrevious = lines[stepStart - 1]?.trim() === '- run: corepack enable';
   const alreadyInStep = /\brun:\s*corepack enable\b/.test(step);
-  if (!alreadyNext && !alreadyInStep) {
-    insertions.set(stepEnd, `${indent}- run: corepack enable`);
+  if (!alreadyPrevious && !alreadyInStep) {
+    insertions.set(stepStart, `${indent}- run: corepack enable`);
   }
 }
 

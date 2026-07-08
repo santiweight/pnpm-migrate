@@ -23,6 +23,7 @@ run_fixture() {
   node "$ROOT/scripts/validate-migration.mjs" "$project"
   grep -q 'pnpm install --frozen-lockfile' .github/workflows/ci.yml
   grep -q 'pnpm test' .github/workflows/ci.yml
+  node -e "const lines=require('fs').readFileSync('.github/workflows/ci.yml','utf8').split(/\\r?\\n/); const setup=lines.findIndex((line)=>line.includes('actions/setup-node@')); if (setup < 1 || lines[setup - 1].trim() !== '- run: corepack enable') process.exit(1)"
 }
 
 run_fixture npm-basic

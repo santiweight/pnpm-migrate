@@ -136,6 +136,13 @@ for (const file of commandFiles) {
     ) {
       errors.push(`${rel}:${index + 2} inserts corepack inside the actions/setup-node step; move it after the setup-node with: block`);
     }
+    if (
+      setupNodeMatch &&
+      lines.slice(index, index + 8).some((nearbyLine) => /^\s*cache:\s*['"]?pnpm['"]?\s*$/.test(nearbyLine)) &&
+      lines[index - 1]?.trim() !== '- run: corepack enable'
+    ) {
+      errors.push(`${rel}:${index + 1} uses setup-node cache: pnpm before corepack enable`);
+    }
   });
 }
 
