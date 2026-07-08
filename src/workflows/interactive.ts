@@ -39,7 +39,7 @@ import {
   showWorktreeSafety,
   showUncommittedFinish,
 } from "../ui/cards.ts";
-import { askCreatePullRequest, askToContinue, chooseCleanupAgent, chooseRemote } from "../ui/prompts.ts";
+import { askCreatePullRequest, askToContinue, chooseRemote } from "../ui/prompts.ts";
 import { clearTerminalView, minimumVisible, sectionPause, uiDelay, uiSpacer } from "../ui/timing.ts";
 import type { PreflightEnvironment } from "../core/preflight.ts";
 
@@ -211,20 +211,9 @@ export async function runInteractiveWorkflow(
     return;
   }
 
-  const selectedAgentId = await chooseCleanupAgent(env.agents);
-  if (selectedAgentId === "skip") {
-    showCleanupSkipped("The migration branch is ready for manual review.");
-    const publish = await runPublishPhase(worktree, env.branch, options.autoApprove);
-    showMigrationSummary(buildMigrationSummary(worktree, commitResult, result));
-    showFinalInstructions(worktree, publish);
-    return;
-  }
-
-  const selectedAgent = env.agents.find(
-    (agent) => agent.id === selectedAgentId,
-  );
+  const selectedAgent = env.agents[0];
   if (!selectedAgent) {
-    showCleanupSkipped("Selected cleanup agent is no longer available.");
+    showCleanupSkipped("No cleanup agent is available.");
     const publish = await runPublishPhase(worktree, env.branch, options.autoApprove);
     showMigrationSummary(buildMigrationSummary(worktree, commitResult, result));
     showFinalInstructions(worktree, publish);

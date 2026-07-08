@@ -108,13 +108,13 @@ export function showFinalInstructions(
 export function showCleanupIntro(): void {
   note(
     [
-      "A coding agent will now review and polish the migration:",
+      "Coding agent will now review and polish the migration:",
       "- README/docs wording",
       "- pnpm-specific install/test issues",
       "- CI/Docker edge cases",
       "- remaining migration warnings",
     ].join("\n"),
-    redTitle("Recommended Agentic Cleanup"),
+    redTitle("Agentic Cleanup"),
   );
 }
 
