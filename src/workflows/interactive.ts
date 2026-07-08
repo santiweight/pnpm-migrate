@@ -55,7 +55,7 @@ async function showEnvironmentProgress(
 
   for (let index = 0; index < 3; index++) {
     renderer.render(index);
-    await uiDelay(1760);
+    await uiDelay(1500);
   }
 
   renderer.render(3);
