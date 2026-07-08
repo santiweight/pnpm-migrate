@@ -9,6 +9,7 @@ export type CaptureResult = {
 
 export type LoggedResult = {
   code: number;
+  durationMs: number;
   logPath: string;
   signal: NodeJS.Signals | null;
 };
@@ -47,6 +48,7 @@ export function runLogged(
   },
 ): Promise<LoggedResult> {
   return new Promise((resolve) => {
+    const startedAt = Date.now();
     const log = createWriteStream(options.logPath, { flags: "a" });
     const child = spawn(command, args, {
       cwd: options.cwd,
@@ -68,7 +70,12 @@ export function runLogged(
       clearInterval(interval);
       options.onTick?.();
       log.end(() => {
-        resolve({ code: signal ? 1 : code ?? 1, logPath: options.logPath, signal });
+        resolve({
+          code: signal ? 1 : code ?? 1,
+          durationMs: Date.now() - startedAt,
+          logPath: options.logPath,
+          signal,
+        });
       });
     });
 
@@ -76,7 +83,12 @@ export function runLogged(
       clearInterval(interval);
       log.write(`${error.stack ?? error.message}\n`);
       log.end(() => {
-        resolve({ code: 1, logPath: options.logPath, signal: null });
+        resolve({
+          code: 1,
+          durationMs: Date.now() - startedAt,
+          logPath: options.logPath,
+          signal: null,
+        });
       });
     });
   });

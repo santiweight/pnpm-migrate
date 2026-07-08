@@ -44,6 +44,7 @@ import {
 import { askToContinue, chooseRemote } from "../ui/prompts.ts";
 import { clearTerminalView, minimumVisible, sectionPause, uiDelay, uiSpacer } from "../ui/timing.ts";
 import type { PreflightEnvironment } from "../core/preflight.ts";
+import { createTelemetry } from "../telemetry.ts";
 
 export type InteractiveWorkflowOptions = {
   autoApprove: boolean;
@@ -112,6 +113,13 @@ async function runPublishPhase(
 export async function runInteractiveWorkflow(
   options: InteractiveWorkflowOptions,
 ): Promise<void> {
+  const runStartedAt = Date.now();
+  const telemetry = createTelemetry(randomUUID());
+  await telemetry.capture("run_started", {
+    auto_approve: options.autoApprove,
+    telemetry_enabled: telemetry.enabled,
+  });
+
   clearTerminalView();
   showIntro();
 
@@ -121,9 +129,25 @@ export async function runInteractiveWorkflow(
   );
 
   if (env.failures.length > 0) {
+    await telemetry.capture("environment_check_failed", {
+      agent_count: env.agents.length,
+      failure_count: env.failures.length,
+      has_git_repo: Boolean(env.gitRoot),
+      has_lockfile: env.lockfiles.length > 0,
+    });
+    await telemetry.capture("run_failed", {
+      duration_ms: Date.now() - runStartedAt,
+      failure_stage: "environment_check",
+    });
     showFailures(env.failures);
     process.exit(1);
   }
+
+  await telemetry.capture("environment_check_passed", {
+    agent_count: env.agents.length,
+    has_claude: env.agents.some((agent) => agent.id === "claude"),
+    has_codex: env.agents.some((agent) => agent.id === "codex"),
+  });
 
   await showEnvironmentProgress(env);
   await sectionPause();
@@ -132,6 +156,7 @@ export async function runInteractiveWorkflow(
   worktreeSpinner.start("Creating temporary git worktree");
   const worktree = await minimumVisible(() => createMigrationWorktree(env));
   worktreeSpinner.stop(redTitle(`Git worktree created: ${worktree.branch}`));
+  await telemetry.capture("worktree_created");
   await sectionPause();
   showWorktreeSafety(worktree);
   await sectionPause(3000);
@@ -169,6 +194,14 @@ export async function runInteractiveWorkflow(
   checklistState.running = false;
 
   if (result.code !== 0) {
+    await telemetry.capture("deterministic_migration_failed", {
+      duration_ms: result.durationMs,
+      exit_code: result.code,
+    });
+    await telemetry.capture("run_failed", {
+      duration_ms: Date.now() - runStartedAt,
+      failure_stage: "deterministic_migration",
+    });
     checklist.render(checklistState);
     checklist.finish();
     showMigrationSummary(
@@ -193,6 +226,11 @@ export async function runInteractiveWorkflow(
   checklist.render(checklistState);
   checklist.finish();
 
+  await telemetry.capture("deterministic_migration_passed", {
+    committed: commitResult.committed,
+    duration_ms: result.durationMs,
+  });
+
   if (!commitResult.committed) {
     showUncommittedFinish();
   }
@@ -201,6 +239,18 @@ export async function runInteractiveWorkflow(
   await sectionPause();
 
   if (options.autoApprove) {
+    await telemetry.capture("agent_cleanup_skipped", {
+      reason: "auto_approve",
+    });
+    await telemetry.capture("pr_skipped", {
+      reason: "auto_approve",
+    });
+    await telemetry.capture("ci_skipped", {
+      reason: "auto_approve",
+    });
+    await telemetry.capture("run_completed", {
+      duration_ms: Date.now() - runStartedAt,
+    });
     showCleanupSkipped(
       "Agent cleanup is skipped in non-interactive auto-approve runs.",
     );
@@ -211,8 +261,27 @@ export async function runInteractiveWorkflow(
 
   const selectedAgent = env.agents[0];
   if (!selectedAgent) {
+    await telemetry.capture("agent_cleanup_skipped", {
+      reason: "no_agent",
+    });
     showCleanupSkipped("No cleanup agent is available.");
     const publish = await runPublishPhase(worktree, env.branch, options.autoApprove);
+    if (publish?.pushed) {
+      await telemetry.capture("branch_pushed");
+    }
+    if (publish?.prUrl) {
+      await telemetry.capture("pr_created");
+    } else {
+      await telemetry.capture("pr_skipped", {
+        reason: publish?.error ? "error" : "not_created",
+      });
+      await telemetry.capture("ci_skipped", {
+        reason: "no_pr",
+      });
+    }
+    await telemetry.capture("run_completed", {
+      duration_ms: Date.now() - runStartedAt,
+    });
     showMigrationSummary(buildMigrationSummary(worktree, commitResult, result));
     showFinalInstructions(worktree, publish);
     return;
@@ -223,6 +292,9 @@ export async function runInteractiveWorkflow(
   uiSpacer();
   showCleanupWaiting();
   await sectionPause(1000);
+  await telemetry.capture("agent_cleanup_started", {
+    agent: selectedAgent.id,
+  });
   cleanupSpinner.start(`Running cleanup with ${selectedAgent.label}`);
   const cleanup = await runCleanup(
     selectedAgent,
@@ -243,8 +315,22 @@ export async function runInteractiveWorkflow(
   await sectionPause();
 
   if (cleanup.run.code !== 0 || cleanup.commit.error) {
+    await telemetry.capture("agent_cleanup_failed", {
+      agent: selectedAgent.id,
+      duration_ms: cleanup.run.durationMs,
+      exit_code: cleanup.run.code,
+    });
+    await telemetry.capture("run_failed", {
+      duration_ms: Date.now() - runStartedAt,
+      failure_stage: "agent_cleanup",
+    });
     process.exit(1);
   }
+
+  await telemetry.capture("agent_cleanup_passed", {
+    agent: selectedAgent.id,
+    duration_ms: cleanup.run.durationMs,
+  });
 
   const finalCommitResult: CommitResult = {
     ...commitResult,
@@ -252,6 +338,18 @@ export async function runInteractiveWorkflow(
   };
   const publish = await runPublishPhase(worktree, env.branch, options.autoApprove);
   let prGreen: PullRequestGreenResult | null = null;
+
+  if (publish?.pushed) {
+    await telemetry.capture("branch_pushed");
+  }
+
+  if (publish?.prUrl) {
+    await telemetry.capture("pr_created");
+  } else {
+    await telemetry.capture("pr_skipped", {
+      reason: publish?.error ? "error" : "not_created",
+    });
+  }
 
   if (publish?.prUrl) {
     const prGreenSpinner = spinner();
@@ -276,8 +374,21 @@ export async function runInteractiveWorkflow(
         ? "Pull request checks passed"
         : "Pull request checks did not pass",
     );
+    await telemetry.capture(prGreen.passed ? "ci_passed" : "ci_failed", {
+      attempts: prGreen.attempts,
+    });
     uiSpacer();
+  } else {
+    await telemetry.capture("ci_skipped", {
+      reason: "no_pr",
+    });
   }
+
+  await telemetry.capture("run_completed", {
+    ci_passed: prGreen?.passed ?? null,
+    created_pr: Boolean(publish?.prUrl),
+    duration_ms: Date.now() - runStartedAt,
+  });
 
   showMigrationSummary(buildMigrationSummary(worktree, finalCommitResult, result));
   showFinalInstructions(worktree, publish, prGreen);

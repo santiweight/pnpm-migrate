@@ -40,6 +40,8 @@ Please file feature requests: I will tackle them.
 
 I don't have a roadmap, if you can think of similar problems that you'd like fixed, send them my way.
 
+Note: `pnpm-migrate` tracks anonymous event usage telemetry, such as "script started" and "PR was created". *Absolutely no personalized telemetry is collected* (e.g. folders, files, PR titles, commit messages, repo names).
+
 # Reach Out
 
 I'm very responsive. Reach out to me here or via [santiweight.com](https://santiweight.com). I'm interested in meeting folks and collaborating.
