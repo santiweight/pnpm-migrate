@@ -1,5 +1,6 @@
 import path from "node:path";
-import { commandOk, runCapture, runLogged } from "../utils/command.ts";
+import { appendFileSync } from "node:fs";
+import { commandOk, runCapture } from "../utils/command.ts";
 import type { MigrationWorktree } from "./worktree.ts";
 
 export type PublishResult = {
@@ -98,6 +99,47 @@ export type PullRequestChecksResult = {
   passed: boolean;
 };
 
+type PullRequestCheck = {
+  bucket?: string;
+  link?: string;
+  name?: string;
+  state?: string;
+  workflow?: string;
+};
+
+function sleep(ms: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+function parseChecks(stdout: string): PullRequestCheck[] {
+  if (!stdout.trim()) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(stdout) as unknown;
+    return Array.isArray(parsed) ? parsed as PullRequestCheck[] : [];
+  } catch {
+    return [];
+  }
+}
+
+function checkState(checks: PullRequestCheck[]): "failed" | "passed" | "pending" {
+  if (checks.length === 0) {
+    return "pending";
+  }
+
+  if (checks.some((check) => check.bucket === "fail" || check.bucket === "cancel")) {
+    return "failed";
+  }
+
+  if (checks.every((check) => check.bucket === "pass" || check.bucket === "skipping")) {
+    return "passed";
+  }
+
+  return "pending";
+}
+
 export function getPullRequestCheckSummary(worktree: MigrationWorktree, prUrl: string): string {
   const checks = runCapture(
     "gh",
@@ -124,23 +166,56 @@ export async function waitForPullRequestChecks(
   attempt: number,
 ): Promise<PullRequestChecksResult> {
   const logPath = path.join(worktree.runRoot, `pr-checks-${attempt}.log`);
-  const checks = await runLogged(
-    "gh",
-    [
-      "pr",
-      "checks",
-      prUrl,
-      "--watch",
-      "--fail-fast",
-      "--interval",
-      "10",
-    ],
-    { cwd: worktree.worktreePath, logPath },
-  );
+  const deadline = Date.now() + 15 * 60 * 1000;
+
+  while (Date.now() < deadline) {
+    const checks = runCapture(
+      "gh",
+      [
+        "pr",
+        "checks",
+        prUrl,
+        "--json",
+        "name,bucket,state,link,workflow",
+      ],
+      { cwd: worktree.worktreePath },
+    );
+    appendFileSync(
+      logPath,
+      [
+        `$ gh pr checks ${prUrl} --json name,bucket,state,link,workflow`,
+        `status=${checks.status}`,
+        checks.stdout,
+        checks.stderr,
+        "",
+      ].filter(Boolean).join("\n"),
+    );
+
+    const parsed = parseChecks(checks.stdout);
+    const state = checkState(parsed);
+
+    if (state === "passed") {
+      return {
+        error: null,
+        logPath,
+        passed: true,
+      };
+    }
+
+    if (state === "failed") {
+      return {
+        error: "Pull request checks failed",
+        logPath,
+        passed: false,
+      };
+    }
+
+    sleep(10_000);
+  }
 
   return {
-    error: checks.code === 0 ? null : `Pull request checks exited with code ${checks.code}`,
+    error: "Timed out waiting for pull request checks",
     logPath,
-    passed: checks.code === 0,
+    passed: false,
   };
 }

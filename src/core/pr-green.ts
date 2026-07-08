@@ -91,7 +91,7 @@ export async function ensurePullRequestGreen(
       worktree,
       fixLogPath,
       options.onStatus,
-      { sessionId: options.sessionId },
+      { resumeSession: true, sessionId: options.sessionId },
     );
     lastLogPath = fixLogPath;
 

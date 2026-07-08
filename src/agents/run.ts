@@ -9,12 +9,14 @@ export function runAgent(
   worktree: MigrationWorktree,
   logPath: string,
   onStatus?: AgentStatusHandler,
-  options: { sessionId?: string } = {},
+  options: { resumeSession?: boolean; sessionId?: string } = {},
 ): Promise<LoggedResult> {
   const parseStatus = createAgentStatusParser(agentId, onStatus);
 
   if (agentId === "claude") {
-    const sessionArgs = options.sessionId ? ["--session-id", options.sessionId] : [];
+    const sessionArgs = options.sessionId
+      ? [options.resumeSession ? "--resume" : "--session-id", options.sessionId]
+      : [];
 
     return runLogged(
       "claude",

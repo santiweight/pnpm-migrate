@@ -50,18 +50,3 @@ export async function chooseRemote(remotes: string[]): Promise<string | null> {
 
   return answer;
 }
-
-export async function askCreatePullRequest(): Promise<boolean> {
-  const answer = await confirm({
-    message: chalk.red("Create a pull request with gh?"),
-    active: "Yes - Create a PR",
-    inactive: "No",
-    initialValue: true,
-  });
-
-  if (isCancel(answer)) {
-    cancelAndExit();
-  }
-
-  return answer === true;
-}

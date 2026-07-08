@@ -39,7 +39,7 @@ import {
   showWorktreeSafety,
   showUncommittedFinish,
 } from "../ui/cards.ts";
-import { askCreatePullRequest, askToContinue, chooseRemote } from "../ui/prompts.ts";
+import { askToContinue, chooseRemote } from "../ui/prompts.ts";
 import { clearTerminalView, minimumVisible, sectionPause, uiDelay, uiSpacer } from "../ui/timing.ts";
 import type { PreflightEnvironment } from "../core/preflight.ts";
 
@@ -91,10 +91,6 @@ async function runPublishPhase(
 
   if (!hasGitHubCli()) {
     showPublishSkipped("GitHub CLI was not found, so no pull request was created.");
-    return pushed;
-  }
-
-  if (!(await askCreatePullRequest())) {
     return pushed;
   }
 

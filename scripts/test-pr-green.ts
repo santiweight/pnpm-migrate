@@ -31,22 +31,18 @@ writeFileSync(
     "  echo \"unexpected gh command: $*\" >&2",
     "  exit 1",
     "fi",
-    "count_file=\"$PNPM_MIGRATE_TEST_ROOT/check-count\"",
-    "count=0",
-    "[ -f \"$count_file\" ] && count=\"$(cat \"$count_file\")\"",
-    "count=$((count + 1))",
-    "printf '%s' \"$count\" > \"$count_file\"",
     "for arg in \"$@\"; do",
     "  if [ \"$arg\" = \"--json\" ]; then",
-    "    printf '%s\\n' '[{\"name\":\"CI\",\"bucket\":\"fail\",\"state\":\"failure\",\"link\":\"https://example.invalid/check\",\"workflow\":\"CI\"}]'",
+    "    if [ -f CI_FIX.md ]; then",
+    "      printf '%s\\n' '[{\"name\":\"CI\",\"bucket\":\"pass\",\"state\":\"SUCCESS\",\"link\":\"https://example.invalid/check\",\"workflow\":\"CI\"}]'",
+    "    else",
+    "      printf '%s\\n' '[{\"name\":\"CI\",\"bucket\":\"fail\",\"state\":\"failure\",\"link\":\"https://example.invalid/check\",\"workflow\":\"CI\"}]'",
+    "    fi",
     "    exit 0",
     "  fi",
     "done",
-    "if [ \"$count\" -eq 1 ]; then",
-    "  echo \"CI failed\"",
-    "  exit 1",
-    "fi",
-    "echo \"CI passed\"",
+    "echo \"expected --json\" >&2",
+    "exit 1",
   ].join("\n"),
 );
 chmodSync(fakeGh, 0o755);
@@ -117,6 +113,10 @@ if (!existsSync(path.join(project, "CI_FIX.md"))) {
 const agentArgs = readFileSync(path.join(project, "pr-green-agent.args"), "utf8");
 if (!agentArgs.includes("00000000-0000-4000-8000-000000000002")) {
   throw new Error("PR green agent must receive the shared session id");
+}
+
+if (!agentArgs.includes("--resume")) {
+  throw new Error("PR green agent must resume the shared session");
 }
 
 if (!agentArgs.includes("make the migration pull request go green")) {
