@@ -38,12 +38,13 @@ export function showWorktreeSafety(worktree: MigrationWorktree): void {
     [
       orange("pnpm-migrate acts in an isolated environment."),
       "",
-      `All work will be done in ${displayWorktreePath(worktree)}`,
+      "All work will be done in the isolated worktree shown next.",
       "",
       orange("Your current directory will not be modified."),
     ].join("\n"),
     orange("⚠ pnpm-migrate will not touch your work ⚠"),
   );
+  writeDiamondLines([`Worktree: ${displayWorktreePath(worktree)}`]);
 }
 
 export function showDeterministicIntro(): void {
@@ -61,7 +62,9 @@ export function showDeterministicIntro(): void {
 }
 
 export function showMigrationSummary(summary: MigrationSummary): void {
-  note(summary.lines.join("\n"), redTitle("Migration branch ready"));
+  const { boxedLines, copyableLines } = splitCopyableSummaryLines(summary.lines);
+  note(boxedLines.join("\n"), redTitle("Migration branch ready"));
+  writeDiamondLines(copyableLines);
 }
 
 export function showPublishSkipped(reason: string): void {
@@ -69,7 +72,8 @@ export function showPublishSkipped(reason: string): void {
 }
 
 export function showPublishFailure(error: string): void {
-  note(chalk.red(error), redTitle("Publish failed"));
+  note(chalk.red("Raw git/GitHub error is printed below."), redTitle("Publish failed"));
+  writeDiamondLines(error.split(/\r?\n/).filter(Boolean));
 }
 
 export function showFinalInstructions(
@@ -114,6 +118,45 @@ function formatTerminalLink(url: string): string {
   }
 
   return `\u001B]8;;${url}\u0007${text}\u001B]8;;\u0007`;
+}
+
+export function splitCopyableSummaryLines(lines: string[]): {
+  boxedLines: string[];
+  copyableLines: string[];
+} {
+  const copyableLinePattern = /^(?:Branch|Log|Worktree|URL|PR):\s+/;
+  const boxedLines: string[] = [];
+  const copyableLines: string[] = [];
+
+  for (const line of lines) {
+    if (copyableLinePattern.test(line)) {
+      copyableLines.push(line);
+    } else {
+      boxedLines.push(line);
+    }
+  }
+
+  if (boxedLines.length === 0) {
+    boxedLines.push("Details are printed below.");
+  }
+
+  return { boxedLines, copyableLines };
+}
+
+export function buildDiamondLines(lines: string[]): string[] {
+  if (lines.length === 0) {
+    return [];
+  }
+
+  return lines.map((line) => `◇  ${line}`);
+}
+
+function writeDiamondLines(lines: string[]): void {
+  if (lines.length === 0) {
+    return;
+  }
+
+  process.stdout.write(`${buildDiamondLines(lines).join("\n")}\n`);
 }
 
 export function showCleanupIntro(): void {

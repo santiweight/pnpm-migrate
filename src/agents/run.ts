@@ -1,4 +1,5 @@
 import type { AgentId } from "./detect.ts";
+import { buildClaudeArgs } from "./claude.ts";
 import type { MigrationWorktree } from "../core/worktree.ts";
 import { runLogged, type LoggedResult } from "../utils/command.ts";
 import { createAgentStatusParser, type AgentStatusHandler } from "./status.ts";
@@ -14,25 +15,14 @@ export function runAgent(
   const parseStatus = createAgentStatusParser(agentId, onStatus);
 
   if (agentId === "claude") {
-    const sessionArgs = options.sessionId
-      ? [options.resumeSession ? "--resume" : "--session-id", options.sessionId]
-      : [];
-
     return runLogged(
       "claude",
-      [
-        "-p",
+      buildClaudeArgs({
         prompt,
-        ...sessionArgs,
-        "--permission-mode",
-        "auto",
-        "--add-dir",
-        worktree.worktreePath,
-        "--output-format",
-        "stream-json",
-        "--include-partial-messages",
-        "--verbose",
-      ],
+        resumeSession: options.resumeSession,
+        sessionId: options.sessionId,
+        worktreePath: worktree.worktreePath,
+      }),
       {
         cwd: worktree.projectPath,
         logPath,

@@ -165,6 +165,71 @@ function materializeVerificationFixture(parentDir: string, mode: "success" | "mi
   return project;
 }
 
+function materializeTs2742Fixture(parentDir: string): string {
+  const project = path.join(parentDir, "ts2742-inferred-express-return");
+  mkdirSync(path.join(project, ".github/workflows"), { recursive: true });
+  writeFileSync(path.join(project, "package.json"), `${JSON.stringify({
+    name: "ts2742-inferred-express-return",
+    version: "1.0.0",
+    private: true,
+    type: "module",
+    scripts: {
+      build: "tsc",
+    },
+    dependencies: {
+      express: "4.21.2",
+    },
+    devDependencies: {
+      "@types/express": "5.0.5",
+      "@types/node": "22.19.1",
+      typescript: "5.9.3",
+    },
+  }, null, 2)}\n`);
+  writeFileSync(path.join(project, "index.ts"), [
+    "import express from 'express';",
+    "",
+    "export function createApp() {",
+    "  const app = express();",
+    "  app.get('/ok', (_req, res) => res.send('ok'));",
+    "  return app;",
+    "}",
+    "",
+  ].join("\n"));
+  writeFileSync(path.join(project, "tsconfig.json"), `${JSON.stringify({
+    compilerOptions: {
+      declaration: true,
+      esModuleInterop: true,
+      module: "NodeNext",
+      moduleResolution: "NodeNext",
+      outDir: "dist",
+      skipLibCheck: true,
+      strict: true,
+      target: "ES2022",
+    },
+    include: ["index.ts"],
+  }, null, 2)}\n`);
+  writeFileSync(path.join(project, ".github/workflows/ci.yml"), [
+    "name: CI",
+    "",
+    "on:",
+    "  pull_request:",
+    "",
+    "jobs:",
+    "  build:",
+    "    runs-on: ubuntu-latest",
+    "    steps:",
+    "      - uses: actions/checkout@v4",
+    "      - uses: actions/setup-node@v4",
+    "        with:",
+    "          node-version: 22",
+    "          cache: npm",
+    "      - run: npm ci",
+    "      - run: npm run build",
+    "",
+  ].join("\n"));
+  return project;
+}
+
 test("migrates basic npm fixture from tag", (t) => {
   const tmpDir = makeTempDir(t, "pnpm-migrate-fixtures.");
   const project = runFixture("npm-basic", tmpDir);
@@ -277,12 +342,12 @@ test("migrates a patch-package patch for a transitive dependency", (t) => {
 
   const result = runMigrationAndValidate({ projectPath: project, repoRoot });
   assert.equal(result.failed, false, `${result.migration.output}\n${formatValidationResult(result.validation)}`);
-  assert.match(result.migration.output, /configured patch-package public hoists: ansi-styles/);
+  assert.match(result.migration.output, /added dependency ansi-styles@4\.3\.0 because patch-package patches it/);
 
-  const npmrc = readFileSync(path.join(project, ".npmrc"), "utf8");
-  assert.match(npmrc, /^hoist-pattern\[\]=ansi-styles$/m);
-  assert.match(npmrc, /^public-hoist-pattern\[\]=ansi-styles$/m);
-  assert.equal(readJson(path.join(project, "package.json")).devDependencies?.["ansi-styles"], "4.3.0");
+  const pkg = readJson(path.join(project, "package.json"));
+  assert.equal(pkg.dependencies?.["ansi-styles"], "4.3.0");
+  assert.equal(pkg.devDependencies?.["ansi-styles"], undefined);
+  assert.equal(existsSync(path.join(project, ".npmrc")), false);
   assert.match(readFileSync(path.join(project, "node_modules/ansi-styles/index.js"), "utf8"), /patched by test/);
 });
 
@@ -309,4 +374,20 @@ test("fails fast when static analysis misses a dependency", (t) => {
   assert.equal(existsSync(path.join(project, ".verification-lint-ran")), false, result.migration.output);
   const pkg = readJson(path.join(project, "package.json"));
   assert.equal(pkg.devDependencies?.["ansi-styles"], undefined);
+});
+
+test("repairs TS2742 Express inferred return types under pnpm layout", (t) => {
+  const tmpDir = makeTempDir(t, "pnpm-migrate-fixtures.");
+  const project = materializeTs2742Fixture(tmpDir);
+  runCommandOk("npm", ["install", "--package-lock-only"], { cwd: project });
+
+  const result = runMigrationAndValidate({ projectPath: project, repoRoot });
+
+  assert.equal(result.failed, false, result.migration.output);
+  assert.match(result.migration.output, /TS2742/);
+  assert.match(result.migration.output, /added explicit Express return type for TS2742 in index\.ts/);
+  assert.match(result.migration.output, /retrying pnpm build after TS2742 annotation repair/);
+  const source = readFileSync(path.join(project, "index.ts"), "utf8");
+  assert.match(source, /import express, \{ type Express \} from 'express';/);
+  assert.match(source, /export function createApp\(\): Express \{/);
 });

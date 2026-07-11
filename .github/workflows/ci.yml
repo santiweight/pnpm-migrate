@@ -19,7 +19,11 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: npm install -g @anthropic-ai/claude-code
       - run: pnpm check
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PNPM_MIGRATE_CLAUDE_MAX_BUDGET_USD: "1"
 
   deterministic-e2e:
     name: deterministic e2e (${{ matrix.target }})

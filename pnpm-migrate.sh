@@ -11,6 +11,7 @@ YES=0
 DRY_RUN=0
 SKIP_AGENT=0
 SKIP_INSTALL=0
+VERIFY_ONLY=0
 TRUST_LOCKFILE="${PNPM_MIGRATE_TRUST_LOCKFILE:-0}"
 TRACE_FILE="${PNPM_MIGRATE_TRACE_FILE:-}"
 BOOTSTRAP_PNPM_VERSION="${PNPM_MIGRATE_BOOTSTRAP_PNPM_VERSION:-}"
@@ -49,6 +50,7 @@ Options:
   --dry-run               Print planned changes without modifying files.
   --skip-agent            Do not run an agent after migration.
   --skip-install          Do not install dependencies.
+  --verify-only           Install from pnpm-lock.yaml and run verification scripts only.
   --trust-lockfile        Trust the generated pnpm lockfile during install.
   -h, --help              Show this help.
 
@@ -180,6 +182,7 @@ parse_args() {
       --dry-run) DRY_RUN=1 ;;
       --skip-agent) SKIP_AGENT=1 ;;
       --skip-install) SKIP_INSTALL=1 ;;
+      --verify-only) VERIFY_ONLY=1 ;;
       --trust-lockfile) TRUST_LOCKFILE=1 ;;
       -h|--help)
         usage
@@ -1194,9 +1197,9 @@ repair_node_types_dependency() {
   node "$STATE_DIR/repair-node-types-dependency.js"
 }
 
-configure_patch_package_hoists() {
+configure_patch_package_dependencies() {
   if [ "$DRY_RUN" -eq 1 ]; then
-    printf '[dry-run] inspect patch-package patches for pnpm hoisting needs\n'
+    printf '[dry-run] inspect patch-package patches for direct dependency needs\n'
     return 0
   fi
   [ -d patches ] || return 0
@@ -1240,13 +1243,13 @@ if (patches.size === 0) {
 }
 
 let packageJsonChanged = false;
-pkg.devDependencies ||= {};
+pkg.dependencies ||= {};
 for (const [packageName, version] of [...patches].sort(([a], [b]) => a.localeCompare(b))) {
   if (!version || deps[packageName]) continue;
-  pkg.devDependencies[packageName] = version;
+  pkg.dependencies[packageName] = version;
   deps[packageName] = version;
   packageJsonChanged = true;
-  console.log(`[pnpm-migrate] added devDependency ${packageName}@${version} because patch-package patches it`);
+  console.log(`[pnpm-migrate] added dependency ${packageName}@${version} because patch-package patches it`);
 }
 
 if (packageJsonChanged) {
@@ -1255,27 +1258,6 @@ if (packageJsonChanged) {
   fs.writeFileSync('package.json', `${JSON.stringify(pkg, null, indent)}\n`);
 }
 
-const npmrcPath = '.npmrc';
-let text = fs.existsSync(npmrcPath) ? fs.readFileSync(npmrcPath, 'utf8') : '';
-const existingLines = new Set(text.split(/\r?\n/).map((line) => line.trim()));
-const linesToAdd = [];
-for (const packageName of [...patches.keys()].sort()) {
-  for (const key of ['hoist-pattern[]', 'public-hoist-pattern[]']) {
-    const line = `${key}=${packageName}`;
-    if (!existingLines.has(line)) {
-      linesToAdd.push(line);
-    }
-  }
-}
-
-if (linesToAdd.length === 0) {
-  process.exit(0);
-}
-
-if (text && !text.endsWith('\n')) text += '\n';
-text += `${linesToAdd.join('\n')}\n`;
-fs.writeFileSync(npmrcPath, text);
-console.log(`[pnpm-migrate] configured patch-package public hoists: ${[...patches.keys()].sort().join(', ')}`);
 NODE
 }
 
@@ -1410,6 +1392,20 @@ install_deps() {
   return 1
 }
 
+install_deps_frozen() {
+  if [ "$SKIP_INSTALL" -eq 1 ]; then
+    log "skipping install"
+    return 0
+  fi
+  log "running pnpm install --frozen-lockfile"
+  if [ "$DRY_RUN" -eq 1 ]; then
+    run pnpm install --frozen-lockfile --prefer-offline
+    return 0
+  fi
+
+  pnpm install --frozen-lockfile --prefer-offline
+}
+
 format_metadata_if_needed() {
   [ "$DRY_RUN" -eq 0 ] || return 0
   [ -x node_modules/.bin/prettier ] || return 0
@@ -1518,6 +1514,95 @@ is_missing_playwright_browsers_failure() {
   return 0
 }
 
+repair_ts2742_express_annotations() {
+  local log_path="$1"
+  node - "$log_path" <<'NODE'
+const fs = require('fs');
+const path = require('path');
+
+const logPath = process.argv[2];
+const ansiPattern = /\x1B\[[0-?]*[ -/]*[@-~]/g;
+const log = fs.readFileSync(logPath, 'utf8').replace(ansiPattern, '');
+if (!/\bTS2742\b/.test(log) || !/A type annotation is necessary/.test(log)) {
+  process.exit(1);
+}
+
+const files = new Set();
+const errorPatterns = [
+  /^(.+?):\d+:\d+ - error TS2742:/gm,
+  /^(.+?)\(\d+,\d+\): error TS2742:/gm,
+];
+for (const errorPattern of errorPatterns) {
+  let match;
+  while ((match = errorPattern.exec(log))) {
+    const file = match[1].trim();
+    if (file && fs.existsSync(file) && fs.statSync(file).isFile()) {
+      files.add(path.resolve(file));
+    }
+  }
+}
+
+function addExpressTypeImport(source) {
+  if (/\btype\s+Express\b/.test(source)) {
+    return source;
+  }
+
+  const namedImportPattern = /import\s+express\s*,\s*\{([^}]*)\}\s+from\s+(['"])express\2\s*;/;
+  if (namedImportPattern.test(source)) {
+    return source.replace(namedImportPattern, (_full, imports, quote) => {
+      const nextImports = imports.trim() ? `${imports.trim()}, type Express` : 'type Express';
+      return `import express, { ${nextImports} } from ${quote}express${quote};`;
+    });
+  }
+
+  const defaultImportPattern = /import\s+express\s+from\s+(['"])express\1\s*;/;
+  if (defaultImportPattern.test(source)) {
+    return source.replace(defaultImportPattern, (_full, quote) => {
+      return `import express, { type Express } from ${quote}express${quote};`;
+    });
+  }
+
+  return source;
+}
+
+let changedFiles = 0;
+for (const file of files) {
+  const original = fs.readFileSync(file, 'utf8');
+  if (!/import\s+express\b/.test(original)) {
+    continue;
+  }
+
+  let changed = false;
+  const annotated = original.replace(
+    /export\s+function\s+([A-Za-z_$][\w$]*)\s*\(([^)]*)\)\s*\{/g,
+    (full, name, params, offset) => {
+      const nearbyBody = original.slice(offset, offset + 2500);
+      if (!/\bexpress\s*\(/.test(nearbyBody) || !/\breturn\b/.test(nearbyBody)) {
+        return full;
+      }
+      changed = true;
+      return `export function ${name}(${params}): Express {`;
+    },
+  );
+
+  if (!changed) {
+    continue;
+  }
+
+  const next = addExpressTypeImport(annotated);
+  if (next === annotated) {
+    continue;
+  }
+
+  fs.writeFileSync(file, next);
+  changedFiles += 1;
+  console.log(`[pnpm-migrate] added explicit Express return type for TS2742 in ${path.relative(process.cwd(), file)}`);
+}
+
+process.exit(changedFiles > 0 ? 0 : 1);
+NODE
+}
+
 run_verification() {
   [ "$DRY_RUN" -eq 0 ] || return 0
 
@@ -1543,22 +1628,30 @@ NODE
     return 0
   fi
   printf '%s\n' "$scripts" | while IFS= read -r script; do
-    log "running pnpm $script"
     local script_log="$STATE_DIR/verify-$script.log"
-    if pnpm "$script" 2>&1 | tee "$script_log"; then
-      continue
-    fi
-    if is_missing_playwright_browsers_failure "$script_log"; then
-      log "pnpm $script needs Playwright browser binaries that are missing from this local machine"
-      log "treating this as an environment prerequisite, not a pnpm migration failure"
-      log "run 'pnpm exec playwright install' in the migrated worktree for local browser test verification"
-      continue
-    fi
-    if [ "${PNPM_MIGRATE_REPAIR_VERIFY_MISSING_DEPS:-0}" = "1" ] && repair_missing_verification_dependencies "$script_log"; then
-      log "added missing dependencies; skipping immediate full-suite retry so the eval post step can run cleanly"
-      return 0
-    fi
-    return 1
+    local repaired_ts2742=0
+    while true; do
+      log "running pnpm $script"
+      if pnpm "$script" 2>&1 | tee "$script_log"; then
+        break
+      fi
+      if is_missing_playwright_browsers_failure "$script_log"; then
+        log "pnpm $script needs Playwright browser binaries that are missing from this local machine"
+        log "treating this as an environment prerequisite, not a pnpm migration failure"
+        log "run 'pnpm exec playwright install' in the migrated worktree for local browser test verification"
+        break
+      fi
+      if [ "$repaired_ts2742" -eq 0 ] && repair_ts2742_express_annotations "$script_log"; then
+        repaired_ts2742=1
+        log "retrying pnpm $script after TS2742 annotation repair"
+        continue
+      fi
+      if [ "${PNPM_MIGRATE_REPAIR_VERIFY_MISSING_DEPS:-0}" = "1" ] && repair_missing_verification_dependencies "$script_log"; then
+        log "added missing dependencies; skipping immediate full-suite retry so the eval post step can run cleanly"
+        return 0
+      fi
+      return 1
+    done
   done
 }
 
@@ -1616,6 +1709,16 @@ main() {
   trace_init
   write_helpers
   write_agent_prompt
+
+  if [ "$VERIFY_ONLY" -eq 1 ]; then
+    log "state directory: $STATE_DIR"
+    log "project directory: $PROJECT_DIR"
+    phase install_deps_frozen install_deps_frozen
+    phase run_verification run_verification
+    log "done"
+    return 0
+  fi
+
   phase select_agent select_agent
   phase preflight preflight
 
@@ -1626,7 +1729,7 @@ main() {
   phase write_pnpm_workspace write_pnpm_workspace_if_needed
   phase set_package_manager set_package_manager
   phase normalize_github_tarballs normalize_github_tarball_dependencies
-  phase configure_patch_package_hoists configure_patch_package_hoists
+  phase configure_patch_package_dependencies configure_patch_package_dependencies
   phase convert_lockfile convert_lockfile
   phase repair_imported_transitive_deps repair_imported_transitive_dependencies
   phase remove_npm_lockfiles remove_npm_lockfiles
