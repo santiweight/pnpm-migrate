@@ -15,14 +15,21 @@ benchmarks/targets.tsv
 Target rows have this shape:
 
 ```text
-id	repo	commit	notes
+id	repo	commit	verification	notes
 ```
+
+`verification` controls whether the migration runs the target's own verification scripts:
+
+- `migration` runs deterministic migration and structural validation.
+- `scripts` additionally runs the target's selected build/test script. Use this for regressions that only appear during compilation or tests.
 
 Run a subset:
 
 ```bash
 TARGETS="opencli p5" pnpm benchmark
 ```
+
+CI runs the pinned `clean-and-green-philly` target with `verification=scripts`, so its migrated Next.js production build must pass.
 
 Keep the temporary benchmark directory:
 
@@ -46,6 +53,6 @@ The benchmark contract is:
 
 1. clone the target repo into a temporary directory;
 2. check out the pinned commit in detached HEAD state;
-3. run `pnpm-migrate.sh --yes --skip-agent --no-tests`;
+3. run `pnpm-migrate.sh --yes --skip-agent`, adding `--no-tests` for `migration` targets;
 4. validate the migrated repo through the shared TypeScript validation API;
 5. write `results.tsv`.

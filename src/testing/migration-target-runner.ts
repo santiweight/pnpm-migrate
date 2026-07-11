@@ -113,12 +113,16 @@ export function materializeGitHubTarget(options: {
 export function runMigrationAndValidate(options: {
   projectPath: string;
   repoRoot: string;
+  runProjectVerification?: boolean;
   skipInstall?: boolean;
   timeoutSeconds?: number;
   onPhase?: PhaseObserver;
   print?: boolean;
 }): { failed: boolean; migration: CommandResult; validation: ReturnType<typeof validateMigration> } {
-  const migrateArgs = [path.join(options.repoRoot, "pnpm-migrate.sh"), "--yes", "--skip-agent", "--no-tests"];
+  const migrateArgs = [path.join(options.repoRoot, "pnpm-migrate.sh"), "--yes", "--skip-agent"];
+  if (!options.runProjectVerification) {
+    migrateArgs.push("--no-tests");
+  }
   if (options.skipInstall) {
     migrateArgs.push("--skip-install");
   }

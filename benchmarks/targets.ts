@@ -4,6 +4,7 @@ export type BenchmarkTarget = {
   id: string;
   repo: string;
   commit: string;
+  verification: "migration" | "scripts";
   notes: string;
 };
 
@@ -14,11 +15,14 @@ export function readBenchmarkTargets(filePath: string): BenchmarkTarget[] {
   }
 
   return input.split(/\r?\n/).slice(1).filter(Boolean).map((line) => {
-    const [id, repo, commit, notes = ""] = line.split("\t");
+    const [id, repo, commit, verification, notes = ""] = line.split("\t");
     if (!id || !repo || !commit) {
       throw new Error(`invalid benchmark target row: ${line}`);
     }
-    return { id, repo, commit, notes };
+    if (verification !== "migration" && verification !== "scripts") {
+      throw new Error(`invalid benchmark verification mode for ${id}: ${verification}`);
+    }
+    return { id, repo, commit, verification, notes };
   });
 }
 
