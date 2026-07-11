@@ -1530,10 +1530,14 @@ run_verification() {
 const fs = require('fs');
 const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 const scripts = pkg.scripts || {};
-const requested = (process.env.PNPM_MIGRATE_VERIFY_SCRIPTS || 'test build lint').split(/[\s,]+/).filter(Boolean);
+const configured = process.env.PNPM_MIGRATE_VERIFY_SCRIPTS;
+const requested = configured
+  ? configured.split(/[\s,]+/).filter(Boolean)
+  : ['build', 'test', 'lint'];
 for (const name of requested) {
   if (scripts[name]) {
     console.log(name);
+    if (!configured) break;
   }
 }
 NODE
@@ -1579,8 +1583,8 @@ Required checks:
   - Contributor setup/test/build docs should usually move to pnpm.
   - Product-consumer install examples, changelog history, and npm publish/version release commands may intentionally stay npm-oriented.
 - Workspaces have pnpm-workspace.yaml when needed.
-- Run the repo's existing lint, test, and build scripts when practical.
-- Summarize any commands that fail and make the smallest necessary fix.
+- The deterministic migration already ran one basic build-first verification command. Run broader relevant lint, test, typecheck, and build scripts when practical.
+- Classify each failure as migration-caused or pre-existing. Fix only migration-caused failures and clearly report unrelated existing failures.
 
 Do not:
 - Rewrite unrelated code.
