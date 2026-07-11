@@ -80,6 +80,8 @@ const worktree: MigrationWorktree = {
 };
 const publish: PublishResult = {
   error: null,
+  pullRequestHead: null,
+  pullRequestRepo: null,
   prUrl: "https://github.com/example/repo/pull/1",
   pushed: true,
   remoteBranch: "origin/pnpm-migrate/pr-green-test",

@@ -5,6 +5,8 @@ import type { MigrationWorktree } from "./worktree.ts";
 
 export type PublishResult = {
   error: string | null;
+  pullRequestHead: string | null;
+  pullRequestRepo: string | null;
   prUrl: string | null;
   pushed: boolean;
   remoteBranch: string | null;
@@ -30,6 +32,8 @@ export function pushBranch(worktree: MigrationWorktree, remoteName: string): Pub
   if (push.status !== 0) {
     return {
       error: push.stderr || "git push failed",
+      pullRequestHead: null,
+      pullRequestRepo: null,
       prUrl: null,
       pushed: false,
       remoteBranch: null,
@@ -39,6 +43,8 @@ export function pushBranch(worktree: MigrationWorktree, remoteName: string): Pub
 
   return {
     error: null,
+    pullRequestHead: null,
+    pullRequestRepo: null,
     prUrl: null,
     pushed: true,
     remoteBranch: `${remoteName}/${worktree.branch}`,
@@ -46,10 +52,150 @@ export function pushBranch(worktree: MigrationWorktree, remoteName: string): Pub
   };
 }
 
+function remoteUrl(worktree: MigrationWorktree, remoteName: string): string | null {
+  const result = runCapture("git", ["remote", "get-url", remoteName], { cwd: worktree.worktreePath });
+  return result.status === 0 ? result.stdout : null;
+}
+
+function githubRepository(remote: string): string | null {
+  const normalized = remote.replace(/[?#].*$/, "").replace(/\/$/, "");
+  const match = normalized.match(/github\.com[:/]([^/]+)\/([^/]+)$/i);
+  if (!match) {
+    return null;
+  }
+  return `${match[1]}/${match[2].replace(/\.git$/i, "")}`;
+}
+
+export function isPermissionDeniedPush(error: string): boolean {
+  return /(?:permission .* denied|write access .* not granted|requested url returned error:\s*403|http 403)/i.test(error);
+}
+
+function authenticatedGitHubUser(worktree: MigrationWorktree): string | null {
+  const result = runCapture("gh", ["api", "user", "--jq", ".login"], { cwd: worktree.worktreePath });
+  return result.status === 0 && result.stdout ? result.stdout : null;
+}
+
+function existingForkIsValid(worktree: MigrationWorktree, forkRepo: string, upstreamRepo: string): boolean | null {
+  const result = runCapture(
+    "gh",
+    ["repo", "view", forkRepo, "--json", "isFork,parent"],
+    { cwd: worktree.worktreePath },
+  );
+  if (result.status !== 0) {
+    return null;
+  }
+
+  try {
+    const details = JSON.parse(result.stdout) as {
+      isFork?: boolean;
+      parent?: { nameWithOwner?: string } | null;
+    };
+    return details.isFork === true
+      && details.parent?.nameWithOwner?.toLowerCase() === upstreamRepo.toLowerCase();
+  } catch {
+    return false;
+  }
+}
+
+function ensureFork(worktree: MigrationWorktree, forkRepo: string, upstreamRepo: string): string | null {
+  const existing = existingForkIsValid(worktree, forkRepo, upstreamRepo);
+  if (existing === true) {
+    return null;
+  }
+  if (existing === false) {
+    return `${forkRepo} exists but is not a fork of ${upstreamRepo}`;
+  }
+
+  const created = runCapture(
+    "gh",
+    ["repo", "fork", upstreamRepo, "--clone=false"],
+    { cwd: worktree.worktreePath },
+  );
+  if (created.status !== 0) {
+    if (existingForkIsValid(worktree, forkRepo, upstreamRepo) === true) {
+      return null;
+    }
+    return created.stderr || created.stdout || `Could not create fork ${forkRepo}`;
+  }
+
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const valid = existingForkIsValid(worktree, forkRepo, upstreamRepo);
+    if (valid === true) {
+      return null;
+    }
+    if (valid === false) {
+      return `Created ${forkRepo}, but it is not a fork of ${upstreamRepo}`;
+    }
+    sleep(400);
+  }
+
+  return `Created ${forkRepo}, but could not verify the fork`;
+}
+
+function ensureForkRemote(worktree: MigrationWorktree, login: string, forkUrl: string): string | null {
+  for (const remoteName of listRemotes(worktree)) {
+    if (remoteUrl(worktree, remoteName)?.replace(/\.git$/i, "") === forkUrl.replace(/\.git$/i, "")) {
+      return remoteName;
+    }
+  }
+
+  const remotes = new Set(listRemotes(worktree));
+  const remoteName = remotes.has(login) ? "pnpm-migrate-fork" : login;
+  if (remotes.has(remoteName)) {
+    return null;
+  }
+
+  const added = runCapture("git", ["remote", "add", remoteName, forkUrl], { cwd: worktree.worktreePath });
+  return added.status === 0 ? remoteName : null;
+}
+
+export function pushBranchWithForkFallback(
+  worktree: MigrationWorktree,
+  remoteName: string,
+  onStatus?: (message: string) => void,
+): PublishResult {
+  const direct = pushBranch(worktree, remoteName);
+  if (direct.pushed || !isPermissionDeniedPush(direct.error ?? "") || !hasGitHubCli()) {
+    return direct;
+  }
+
+  const upstreamRepo = remoteUrl(worktree, remoteName);
+  const upstream = upstreamRepo ? githubRepository(upstreamRepo) : null;
+  const login = authenticatedGitHubUser(worktree);
+  if (!upstream || !login) {
+    return direct;
+  }
+
+  const repoName = upstream.split("/")[1];
+  const forkRepo = `${login}/${repoName}`;
+  onStatus?.(`No write access to ${remoteName}; preparing ${forkRepo}`);
+  const forkError = ensureFork(worktree, forkRepo, upstream);
+  if (forkError) {
+    return { ...direct, error: `${direct.error}\n\nFork fallback failed: ${forkError}` };
+  }
+
+  const forkRemote = ensureForkRemote(worktree, login, `https://github.com/${forkRepo}.git`);
+  if (!forkRemote) {
+    return { ...direct, error: `${direct.error}\n\nFork fallback failed: could not configure a fork remote` };
+  }
+
+  onStatus?.(`Pushing migration branch to ${forkRepo}`);
+  const forkPush = pushBranch(worktree, forkRemote);
+  if (!forkPush.pushed) {
+    return { ...forkPush, error: `${direct.error}\n\nFork push failed: ${forkPush.error}` };
+  }
+
+  return {
+    ...forkPush,
+    pullRequestHead: `${login}:${worktree.branch}`,
+    pullRequestRepo: upstream,
+  };
+}
+
 export function createPullRequest(
   worktree: MigrationWorktree,
   baseBranch: string,
-  remoteName: string,
+  pushed: PublishResult,
 ): PublishResult {
   const body = [
     "Migrates this project from npm to pnpm.",
@@ -69,27 +215,26 @@ export function createPullRequest(
       "--base",
       baseBranch,
       "--head",
-      worktree.branch,
+      pushed.pullRequestHead ?? worktree.branch,
+      ...(pushed.pullRequestRepo ? ["--repo", pushed.pullRequestRepo] : []),
     ],
     { cwd: worktree.worktreePath },
   );
 
   if (pr.status !== 0) {
     return {
+      ...pushed,
       error: pr.stderr || "gh pr create failed",
       prUrl: null,
       pushed: true,
-      remoteBranch: `${remoteName}/${worktree.branch}`,
-      remoteName,
     };
   }
 
   return {
+    ...pushed,
     error: null,
     prUrl: pr.stdout.split(/\r?\n/).find((line) => /^https?:\/\//.test(line.trim())) ?? pr.stdout,
     pushed: true,
-    remoteBranch: `${remoteName}/${worktree.branch}`,
-    remoteName,
   };
 }
 

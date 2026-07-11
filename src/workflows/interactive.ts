@@ -13,7 +13,7 @@ import {
   createPullRequest,
   hasGitHubCli,
   listRemotes,
-  pushBranch,
+  pushBranchWithForkFallback,
   type PublishResult,
 } from "../core/publish.ts";
 import { ensurePullRequestGreen, type PullRequestGreenResult } from "../core/pr-green.ts";
@@ -84,8 +84,14 @@ async function runPublishPhase(
 
   const publishSpinner = spinner();
   publishSpinner.start(`Pushing branch to ${remoteName}`);
-  const pushed = pushBranch(worktree, remoteName);
-  publishSpinner.stop(pushed.pushed ? `Pushed branch to ${remoteName}` : `Push failed for ${remoteName}`);
+  const pushed = pushBranchWithForkFallback(worktree, remoteName, (message) => {
+    publishSpinner.message(message);
+  });
+  publishSpinner.stop(
+    pushed.pushed
+      ? `Pushed branch to ${pushed.remoteName}`
+      : `Push failed for ${remoteName}`,
+  );
 
   if (!pushed.pushed) {
     showPublishFailure(pushed.error ?? "git push failed");
@@ -99,7 +105,7 @@ async function runPublishPhase(
 
   const prSpinner = spinner();
   prSpinner.start("Creating pull request");
-  const pr = createPullRequest(worktree, baseBranch, remoteName);
+  const pr = createPullRequest(worktree, baseBranch, pushed);
   prSpinner.stop(pr.prUrl ? "Pull request created" : "Pull request was not created");
 
   if (pr.error) {
