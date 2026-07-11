@@ -4,6 +4,7 @@ set -euo pipefail
 STATE_ROOT="${PNPM_MIGRATE_STATE_ROOT:-/tmp}"
 STATE_DIR=""
 PROJECT_DIR="$PWD"
+ENGINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 AGENT="manual"
 AGENT_SET=0
 YES=0
@@ -677,142 +678,6 @@ fs.writeFileSync(pkgPath, `${JSON.stringify(pkg, null, indent)}\n`);
 console.log(`package.json: added devDependency @types/node@^${major}.0.0`);
 NODE
 
-  cat > "$STATE_DIR/repair-imported-transitive-deps.js" <<'NODE'
-const fs = require('fs');
-const path = require('path');
-const { builtinModules } = require('module');
-
-if (!fs.existsSync('package-lock.json')) {
-  process.exit(0);
-}
-
-const lock = JSON.parse(fs.readFileSync('package-lock.json', 'utf8'));
-const builtins = new Set([...builtinModules, ...builtinModules.map((name) => `node:${name}`)]);
-const skipDirs = new Set(['.git', 'node_modules', '.pnpm-store', 'dist', 'dist-module', 'coverage', 'tmp']);
-const extensions = new Set(['.cjs', '.cts', '.js', '.jsx', '.mjs', '.mts', '.ts', '.tsx']);
-
-function walkPackageJsons(dir, files = []) {
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (skipDirs.has(entry.name)) continue;
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      walkPackageJsons(full, files);
-    } else if (entry.name === 'package.json') {
-      files.push(full);
-    }
-  }
-  return files;
-}
-
-function walk(dir, files = []) {
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (skipDirs.has(entry.name)) continue;
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      walk(full, files);
-    } else if (entry.name === 'package.json' || extensions.has(path.extname(entry.name))) {
-      files.push(full);
-    }
-  }
-  return files;
-}
-
-const packageFiles = walkPackageJsons('.');
-const packageDirs = new Set(packageFiles.map((file) => path.dirname(file)));
-
-function walkPackage(dir, files = []) {
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (skipDirs.has(entry.name)) continue;
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      if (full !== dir && packageDirs.has(full)) continue;
-      walkPackage(full, files);
-    } else if (extensions.has(path.extname(entry.name))) {
-      files.push(full);
-    }
-  }
-  return files;
-}
-
-function packageNameFromSpecifier(specifier) {
-  if (!specifier || specifier.startsWith('.') || specifier.startsWith('/') || specifier.startsWith('#')) return null;
-  if (builtins.has(specifier)) return null;
-  if (specifier.startsWith('@')) {
-    const parts = specifier.split('/');
-    return parts.length >= 2 ? `${parts[0]}/${parts[1]}` : null;
-  }
-  return specifier.split('/')[0];
-}
-
-function declared(pkg, name) {
-  return Boolean(
-    pkg.name === name ||
-      pkg.dependencies?.[name] ||
-      pkg.devDependencies?.[name] ||
-      pkg.peerDependencies?.[name] ||
-      pkg.optionalDependencies?.[name]
-  );
-}
-
-function lockedVersion(name) {
-  return lock.packages?.[`node_modules/${name}`]?.version || lock.dependencies?.[name]?.version || null;
-}
-
-const patterns = [
-  /\bfrom\s+['"]([^'"]+)['"]/g,
-  /\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
-  /\brequire\s*\(\s*['"]([^'"]+)['"]\s*\)/g
-];
-
-let changed = false;
-
-for (const pkgPath of packageFiles) {
-  let pkg;
-  let original;
-  try {
-    original = fs.readFileSync(pkgPath, 'utf8');
-    pkg = JSON.parse(original);
-  } catch {
-    continue;
-  }
-  const pkgDir = path.dirname(pkgPath);
-  const imports = new Set();
-
-  for (const file of walkPackage(pkgDir)) {
-    const text = fs.readFileSync(file, 'utf8');
-    for (const pattern of patterns) {
-      let match;
-      while ((match = pattern.exec(text))) {
-        const name = packageNameFromSpecifier(match[1]);
-        if (name) imports.add(name);
-      }
-    }
-  }
-
-  const missing = [...imports]
-    .filter((name) => !declared(pkg, name))
-    .map((name) => [name, lockedVersion(name)])
-    .filter(([, version]) => version)
-    .sort(([left], [right]) => left.localeCompare(right));
-
-  if (missing.length === 0) continue;
-
-  pkg.devDependencies ||= {};
-  for (const [name, version] of missing) {
-    if (!declared(pkg, name)) {
-      pkg.devDependencies[name] = `^${version}`;
-      console.log(`${pkgPath}: added devDependency ${name}@^${version} because source imports it`);
-      changed = true;
-    }
-  }
-
-  const indent = original.match(/\n([ \t]+)"/)?.[1] || '  ';
-  fs.writeFileSync(pkgPath, `${JSON.stringify(pkg, null, indent)}\n`);
-}
-
-process.exit(changed ? 0 : 0);
-NODE
-
   cat > "$STATE_DIR/rewrite-markdown-npm-commands.js" <<'NODE'
 const fs = require('fs');
 const path = require('path');
@@ -1234,7 +1099,7 @@ repair_imported_transitive_dependencies() {
     printf '[dry-run] inspect source imports for dependencies hidden by npm hoisting\n'
     return 0
   fi
-  node "$STATE_DIR/repair-imported-transitive-deps.js"
+  node "$ENGINE_DIR/src/migration/imported-packages.mjs" "$PROJECT_DIR"
 }
 
 rewrite_markdown_npm_commands() {
@@ -1378,7 +1243,62 @@ NODE
 repair_missing_verification_dependencies() {
   local log_path="$1"
   local packages
-  packages="$(sed -n "s/.*Cannot find package '\([^']*\)'.*/\1/p" "$log_path" | LC_ALL=C sort -u)"
+  packages="$(node - "$log_path" <<'NODE'
+const fs = require('fs');
+const { builtinModules } = require('module');
+
+const logPath = process.argv[2];
+const log = fs.readFileSync(logPath, 'utf8');
+const pnpmLock = fs.existsSync('pnpm-lock.yaml') ? fs.readFileSync('pnpm-lock.yaml', 'utf8') : '';
+const builtins = new Set([...builtinModules, ...builtinModules.map((name) => `node:${name}`)]);
+
+function packageNameFromSpecifier(specifier) {
+  if (!specifier || specifier.startsWith('.') || specifier.startsWith('/') || specifier.startsWith('#')) return null;
+  if (builtins.has(specifier)) return null;
+  if (specifier.startsWith('@')) {
+    const parts = specifier.split('/');
+    return parts.length >= 2 ? `${parts[0]}/${parts[1]}` : null;
+  }
+  return specifier.split('/')[0];
+}
+
+function typesPackageName(name) {
+  if (name.startsWith('@')) {
+    const parts = name.split('/');
+    if (parts.length < 2) return null;
+    return `@types/${parts[0].slice(1)}__${parts[1]}`;
+  }
+  return `@types/${name}`;
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function lockContainsPackage(name) {
+  if (!pnpmLock) return false;
+  const escaped = escapeRegExp(name);
+  return new RegExp(`^\\s{2}'?${escaped}@`, 'm').test(pnpmLock);
+}
+
+const missing = new Set();
+const pattern = /Cannot find (?:package|module) '([^']+)'/g;
+let match;
+while ((match = pattern.exec(log))) {
+  const name = packageNameFromSpecifier(match[1]);
+  if (!name) continue;
+
+  const typesName = typesPackageName(name);
+  if (!lockContainsPackage(name) && typesName && lockContainsPackage(typesName)) {
+    missing.add(typesName);
+  } else {
+    missing.add(name);
+  }
+}
+
+console.log([...missing].sort().join('\n'));
+NODE
+)"
   if [ -z "$packages" ]; then
     return 1
   fi
