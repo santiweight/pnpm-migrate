@@ -1325,81 +1325,6 @@ NODE
   pnpm exec prettier --write "${files[@]}" >/dev/null 2>&1 || true
 }
 
-repair_missing_verification_dependencies() {
-  local log_path="$1"
-  local packages
-  packages="$(node - "$log_path" <<'NODE'
-const fs = require('fs');
-const { builtinModules } = require('module');
-
-const logPath = process.argv[2];
-const log = fs.readFileSync(logPath, 'utf8');
-const pnpmLock = fs.existsSync('pnpm-lock.yaml') ? fs.readFileSync('pnpm-lock.yaml', 'utf8') : '';
-const builtins = new Set([...builtinModules, ...builtinModules.map((name) => `node:${name}`)]);
-
-function packageNameFromSpecifier(specifier) {
-  if (!specifier || specifier.startsWith('.') || specifier.startsWith('/') || specifier.startsWith('#')) return null;
-  if (builtins.has(specifier)) return null;
-  if (specifier.startsWith('@')) {
-    const parts = specifier.split('/');
-    return parts.length >= 2 ? `${parts[0]}/${parts[1]}` : null;
-  }
-  return specifier.split('/')[0];
-}
-
-function typesPackageName(name) {
-  if (name.startsWith('@')) {
-    const parts = name.split('/');
-    if (parts.length < 2) return null;
-    return `@types/${parts[0].slice(1)}__${parts[1]}`;
-  }
-  return `@types/${name}`;
-}
-
-function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function lockContainsPackage(name) {
-  if (!pnpmLock) return false;
-  const escaped = escapeRegExp(name);
-  return new RegExp(`^\\s{2}'?${escaped}@`, 'm').test(pnpmLock);
-}
-
-const missing = new Set();
-const pattern = /Cannot find (?:package|module) '([^']+)'/g;
-let match;
-while ((match = pattern.exec(log))) {
-  const name = packageNameFromSpecifier(match[1]);
-  if (!name) continue;
-
-  const typesName = typesPackageName(name);
-  if (!lockContainsPackage(name) && typesName && lockContainsPackage(typesName)) {
-    missing.add(typesName);
-  } else {
-    missing.add(name);
-  }
-}
-
-console.log([...missing].sort().join('\n'));
-NODE
-)"
-  if [ -z "$packages" ]; then
-    return 1
-  fi
-
-  printf '%s\n' "$packages" | while IFS= read -r package_name; do
-    [ -n "$package_name" ] || continue
-    log "adding missing direct dev dependency required under pnpm: $package_name"
-    if [ -f pnpm-workspace.yaml ]; then
-      pnpm add -Dw "$package_name"
-    else
-      pnpm add -D "$package_name"
-    fi
-  done
-  return 0
-}
-
 is_missing_playwright_browsers_failure() {
   local log_path="$1"
   grep -Eq "pnpm exec playwright install|Executable doesn't exist at .*ms-playwright|Looks like Playwright.*was just installed or updated" "$log_path" || return 1
@@ -1419,10 +1344,10 @@ run_verification() {
 const fs = require('fs');
 const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 const scripts = pkg.scripts || {};
-for (const name of ['test', 'build', 'lint']) {
+const requested = (process.env.PNPM_MIGRATE_VERIFY_SCRIPTS || 'test build lint').split(/[\s,]+/).filter(Boolean);
+for (const name of requested) {
   if (scripts[name]) {
     console.log(name);
-    break;
   }
 }
 NODE
@@ -1437,18 +1362,13 @@ NODE
     if pnpm "$script" 2>&1 | tee "$script_log"; then
       continue
     fi
-
     if is_missing_playwright_browsers_failure "$script_log"; then
       log "pnpm $script needs Playwright browser binaries that are missing from this local machine"
       log "treating this as an environment prerequisite, not a pnpm migration failure"
       log "run 'pnpm exec playwright install' in the migrated worktree for local browser test verification"
-      return 0
-    elif repair_missing_verification_dependencies "$script_log"; then
-      log "added missing dependencies; skipping immediate full-suite retry so the eval post step can run cleanly"
-      return 0
-    else
-      return 1
+      continue
     fi
+    return 1
   done
 }
 

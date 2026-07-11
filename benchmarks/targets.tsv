@@ -8,4 +8,4 @@ magicmirror	MagicMirrorOrg/MagicMirror	4b4a59534f7da01e4030e46029fe9dd649a7675e	
 opencli	jackwener/OpenCLI	6129bb3953d5eebd8dd67f96802b320c723f50ca	migration	CLI tool typecheck target.
 p5	processing/p5.js	60ca87da4b70c508b9fa245c765bedbb65dac977	migration	Creative coding library lint target.
 semantic-release	semantic-release/semantic-release	8e28dd3d6c126d8c724027f532452d2f1e3ec9d4	migration	Release tool unit-test target.
-clean-and-green-philly	CodeForPhilly/clean-and-green-philly	12e8764807feae02956aa7e652867293bc17351e	scripts	Next.js build target covering npm-hoisted @types/geojson.
+clean-and-green-philly	CodeForPhilly/clean-and-green-philly	12e8764807feae02956aa7e652867293bc17351e	build	Next.js build target covering npm-hoisted @types/geojson.
