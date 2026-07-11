@@ -76,6 +76,10 @@ export function showPublishFailure(error: string): void {
   writeDiamondLines(error.split(/\r?\n/).filter(Boolean));
 }
 
+export function showPrUrl(url: string): void {
+  writeDiamondLines([`PR: ${url}`]);
+}
+
 export function showFinalInstructions(
   worktree: MigrationWorktree,
   publish: PublishResult | null,
@@ -177,7 +181,7 @@ export function showCleanupWaiting(): void {
 }
 
 export function showPrFixWaiting(): void {
-  note("Pull request checks failed. Agent is fixing the migration and will re-check CI.", redTitle("Agent fixing CI"));
+  note("PR checks failed. Agent is fixing the migration and will re-check CI.", redTitle("Agent fixing CI"));
 }
 
 export function showCleanupSkipped(reason: string): void {

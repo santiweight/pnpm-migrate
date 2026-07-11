@@ -122,7 +122,7 @@ if (!agentArgs.includes("--resume")) {
   throw new Error("PR green agent must resume the shared session");
 }
 
-if (!agentArgs.includes("make the migration pull request go green")) {
+if (!agentArgs.includes("make the migration PR go green")) {
   throw new Error("PR green prompt was not passed to the agent");
 }
 

@@ -7,6 +7,7 @@ test("keeps copyable migration summary values out of boxed lines", () => {
     "Branch: pnpm-migrate/actor-rag-web-browser-1783789974854",
     "Changed files: 10",
     "Log: /tmp/pnpm-migrate.3QSRLP-deterministic-migration.log",
+    "PR: https://github.com/example/project/pull/1",
     "Commit note: Migration failed before commit",
   ]);
 
@@ -17,6 +18,7 @@ test("keeps copyable migration summary values out of boxed lines", () => {
   assert.deepEqual(summary.copyableLines, [
     "Branch: pnpm-migrate/actor-rag-web-browser-1783789974854",
     "Log: /tmp/pnpm-migrate.3QSRLP-deterministic-migration.log",
+    "PR: https://github.com/example/project/pull/1",
   ]);
 });
 
@@ -37,8 +39,10 @@ test("prints copyable values as one-line diamond details", () => {
   assert.deepEqual(buildDiamondLines([
     "Branch: pnpm-migrate/actor-rag-web-browser-1783790631791",
     "Log: /tmp/pnpm-migrate.SfvS6c-deterministic-migration.log",
+    "PR: https://github.com/example/project/pull/1",
   ]), [
     "◇  Branch: pnpm-migrate/actor-rag-web-browser-1783790631791",
     "◇  Log: /tmp/pnpm-migrate.SfvS6c-deterministic-migration.log",
+    "◇  PR: https://github.com/example/project/pull/1",
   ]);
 });
