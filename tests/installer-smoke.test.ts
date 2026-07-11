@@ -1,14 +1,14 @@
 import assert from "node:assert/strict";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import os from "node:os";
+import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
+import { runCommand as run, runCommandOk as runOk } from "../src/testing/process.ts";
 import { repoRoot } from "./helpers/repo.ts";
-import { run, runOk } from "./helpers/process.ts";
+import { makeTempDir } from "./helpers/temp.ts";
 
-test("install.sh migrates in an isolated worktree without touching the source checkout", () => {
-  const tmpDir = mkdtempSync(path.join(os.tmpdir(), "pnpm-migrate-installer."));
-  const stateRoot = mkdtempSync(path.join(os.tmpdir(), "pnpm-migrate-state."));
+test("install.sh migrates in an isolated worktree without touching the source checkout", (t) => {
+  const tmpDir = makeTempDir(t, "pnpm-migrate-installer.");
+  const stateRoot = makeTempDir(t, "pnpm-migrate-state.");
   const binDir = path.join(tmpDir, "bin");
   const project = path.join(tmpDir, "project");
   mkdirSync(binDir, { recursive: true });
@@ -163,6 +163,4 @@ test("install.sh migrates in an isolated worktree without touching the source ch
 
   runOk("git", ["worktree", "remove", "-f", migrationWorktree], { cwd: project });
   runOk("git", ["branch", "-D", branch], { cwd: project });
-  rmSync(stateRoot, { recursive: true, force: true });
 });
-

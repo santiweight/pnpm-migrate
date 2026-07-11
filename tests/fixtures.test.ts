@@ -1,27 +1,28 @@
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
-import os from "node:os";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
-import { materializeFixture, type FixtureName } from "./helpers/fixture.ts";
+import { materializeFixture, type FixtureName } from "../src/testing/fixtures.ts";
+import { runMigrationAndValidate } from "../src/testing/migration-target-runner.ts";
+import { runCommandOk } from "../src/testing/process.ts";
+import { formatValidationResult } from "../src/validation/migration.ts";
 import { repoRoot } from "./helpers/repo.ts";
-import { runOk } from "./helpers/process.ts";
+import { makeTempDir } from "./helpers/temp.ts";
 
 function readJson(filePath: string): any {
   return JSON.parse(readFileSync(filePath, "utf8"));
 }
 
 function migrateProject(project: string): string {
-  runOk("npm", ["install", "--package-lock-only"], { cwd: project });
+  runCommandOk("npm", ["install", "--package-lock-only"], { cwd: project });
 
-  const migrate = runOk("bash", [path.join(repoRoot, "pnpm-migrate.sh"), "--yes", "--skip-agent"], { cwd: project });
-  assert.match(migrate.output, /\[pnpm-migrate\] state directory: \/tmp\/pnpm-migrate\./);
+  const result = runMigrationAndValidate({ projectPath: project, repoRoot });
+  assert.match(result.migration.output, /\[pnpm-migrate\] state directory: \/tmp\/pnpm-migrate\./);
+  assert.equal(result.failed, false, `${result.migration.output}\n${formatValidationResult(result.validation)}`);
 
   assert.equal(existsSync(path.join(project, "pnpm-lock.yaml")), true);
   assert.equal(existsSync(path.join(project, "package-lock.json")), false);
   assert.match(readJson(path.join(project, "package.json")).packageManager ?? "", /^pnpm@/);
-
-  runOk("node", [path.join(repoRoot, "scripts/validate-migration.mjs"), project], { cwd: project });
 
   const workflow = readFileSync(path.join(project, ".github/workflows/ci.yml"), "utf8");
   assert.match(workflow, /pnpm install --frozen-lockfile/);
@@ -36,7 +37,11 @@ function migrateProject(project: string): string {
 }
 
 function runFixture(name: FixtureName, tmpDir: string): string {
-  return migrateProject(materializeFixture(name, tmpDir));
+  return migrateProject(materializeFixture({
+    name,
+    parentDir: tmpDir,
+    fixtureRepo: process.env.PNPM_MIGRATE_FIXTURE_REPO || repoRoot,
+  }));
 }
 
 function materializeHoistedTypesFixture(parentDir: string): string {
@@ -97,8 +102,8 @@ function materializeHoistedTypesFixture(parentDir: string): string {
   return project;
 }
 
-test("migrates basic npm fixture from tag", () => {
-  const tmpDir = mkdtempSync(path.join(os.tmpdir(), "pnpm-migrate-fixtures."));
+test("migrates basic npm fixture from tag", (t) => {
+  const tmpDir = makeTempDir(t, "pnpm-migrate-fixtures.");
   const project = runFixture("npm-basic", tmpDir);
 
   const readme = readFileSync(path.join(project, "README.md"), "utf8");
@@ -117,8 +122,8 @@ test("migrates basic npm fixture from tag", () => {
   assert.equal(scripts.patch, "node -e \"process.exit(0)\"");
 });
 
-test("migrates npm workspace fixture from tag", () => {
-  const tmpDir = mkdtempSync(path.join(os.tmpdir(), "pnpm-migrate-fixtures."));
+test("migrates npm workspace fixture from tag", (t) => {
+  const tmpDir = makeTempDir(t, "pnpm-migrate-fixtures.");
   const project = runFixture("npm-workspace", tmpDir);
 
   assert.equal(existsSync(path.join(project, "pnpm-workspace.yaml")), true);
@@ -129,16 +134,16 @@ test("migrates npm workspace fixture from tag", () => {
   assert.equal(scripts.package, "pnpm --filter @fixture/a build");
 });
 
-test("repairs hoisted import fixture from tag", () => {
-  const tmpDir = mkdtempSync(path.join(os.tmpdir(), "pnpm-migrate-fixtures."));
+test("repairs hoisted import fixture from tag", (t) => {
+  const tmpDir = makeTempDir(t, "pnpm-migrate-fixtures.");
   const project = runFixture("npm-hoisted-import", tmpDir);
 
   const pkg = readJson(path.join(project, "package.json"));
   assert.ok(pkg.dependencies?.["ansi-styles"]);
 });
 
-test("repairs a hoisted DefinitelyTyped import", () => {
-  const tmpDir = mkdtempSync(path.join(os.tmpdir(), "pnpm-migrate-fixtures."));
+test("repairs a hoisted DefinitelyTyped import", (t) => {
+  const tmpDir = makeTempDir(t, "pnpm-migrate-fixtures.");
   const project = migrateProject(materializeHoistedTypesFixture(tmpDir));
 
   const pkg = readJson(path.join(project, "package.json"));
