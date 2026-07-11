@@ -29,9 +29,11 @@ Run a subset:
 TARGETS="opencli p5" pnpm benchmark
 ```
 
-CI runs pinned deterministic e2e smoke targets for `clean-and-green-philly` and `actor-rag-web-browser`.
+CI runs pinned deterministic e2e smoke targets for `clean-and-green-philly`, `actor-rag-web-browser`, `axe-core`, and `pollinations`.
 
 Each smoke clones the pinned repo commit, runs the deterministic migration end to end, validates the migrated output, installs with pnpm, and runs the same default project verification path as the interactive Continue flow.
+
+Additional issue-backed candidates are tracked in `docs/e2e-candidates.md` and can be run locally with `TARGETS="<target ids>" pnpm benchmark`.
 
 Keep the temporary benchmark directory:
 

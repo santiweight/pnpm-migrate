@@ -10,3 +10,8 @@ p5	processing/p5.js	60ca87da4b70c508b9fa245c765bedbb65dac977	lint	Creative codin
 semantic-release	semantic-release/semantic-release	8e28dd3d6c126d8c724027f532452d2f1e3ec9d4	test	Release tool unit-test target.
 clean-and-green-philly	santiweight/clean-and-green-philly	12e8764807feae02956aa7e652867293bc17351e	default	Next.js target using the same deterministic verification path as the interactive Continue flow.
 actor-rag-web-browser	apify/actor-rag-web-browser	dc1b177df7c52e71ab6770f15062430af86f830c	default	Actor target using the same deterministic verification path as the interactive Continue flow.
+axe-core	dequelabs/axe-core	06e84c3f2711bdb628c7c4246d1bb8e6f6632379	default	Issue-backed npm to pnpm candidate: https://github.com/dequelabs/axe-core/issues/5111
+pollinations	pollinations/pollinations	ca6cd96d1fbbe5f06efebf23c58bdf5e5d90aa0a	default	Issue-backed npm to pnpm candidate: https://github.com/pollinations/pollinations/issues/11484
+jaeger-ui	jaegertracing/jaeger-ui	599b93fc53415e7e8da258f6d9e69fb3344bfbc0	default	Issue-backed npm to pnpm candidate: https://github.com/jaegertracing/jaeger-ui/issues/4115
+wa-js	wppconnect-team/wa-js	a4c57173198e9b51c33c33490e07e78d27d20ffe	default	Issue-backed npm to pnpm candidate: https://github.com/wppconnect-team/wa-js/issues/3428
+vscode-containers	microsoft/vscode-containers	d824847dfb5c7179f6793bfa5679407c50ec4cf8	default	Issue-backed npm to pnpm candidate: https://github.com/microsoft/vscode-containers/issues/520
