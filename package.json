@@ -30,7 +30,7 @@
     "benchmark": "tsx benchmarks/deterministic.ts"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22.13"
   },
   "dependencies": {
     "@clack/prompts": "^1.7.0",
