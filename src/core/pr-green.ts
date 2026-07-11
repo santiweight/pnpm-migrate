@@ -2,7 +2,7 @@ import path from "node:path";
 import type { Agent } from "../agents/detect.ts";
 import { runAgent } from "../agents/run.ts";
 import type { AgentStatusHandler } from "../agents/status.ts";
-import { pushBranch, getPullRequestCheckSummary, waitForPullRequestChecks, type PublishResult } from "./publish.ts";
+import { pushBranchToRemote, getPullRequestCheckSummary, waitForPullRequestChecks, type PublishResult } from "./publish.ts";
 import { commitCiFix, type CommitResult } from "./summary.ts";
 import type { MigrationWorktree } from "./worktree.ts";
 
@@ -119,7 +119,10 @@ export async function ensurePullRequestGreen(
     }
 
     if (commit.committed) {
-      const pushed = pushBranch(worktree, publish.remoteName);
+      const pushed = pushBranchToRemote({
+        name: worktree.branch,
+        repositoryPath: worktree.worktreePath,
+      }, publish.remoteName);
       if (!pushed.pushed) {
         return {
           attempts: attempt + 1,

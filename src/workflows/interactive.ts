@@ -10,10 +10,9 @@ import {
 } from "../core/summary.ts";
 import { runCleanup } from "../core/cleanup.ts";
 import {
-  createPullRequest,
-  hasGitHubCli,
   listRemotes,
-  pushBranchWithForkFallback,
+  publishBranch,
+  type LocalBranch,
   type PublishResult,
 } from "../core/publish.ts";
 import { ensurePullRequestGreen, type PullRequestGreenResult } from "../core/pr-green.ts";
@@ -80,44 +79,39 @@ async function runPublishPhase(
     return null;
   }
 
-  const remoteName = await chooseRemote(listRemotes(worktree));
+  const branch: LocalBranch = {
+    name: worktree.branch,
+    repositoryPath: worktree.worktreePath,
+  };
+  const remoteName = await chooseRemote(listRemotes(branch));
   if (!remoteName) {
     showPublishSkipped("No git remotes are configured for this repository.");
     return null;
   }
 
   const publishSpinner = spinner();
-  publishSpinner.start(`Pushing branch to ${remoteName}`);
-  const pushed = pushBranchWithForkFallback(worktree, remoteName, (message) => {
+  publishSpinner.start(`Publishing branch via ${remoteName}`);
+  const published = publishBranch(branch, remoteName, baseBranch, (message) => {
     publishSpinner.message(message);
   });
   publishSpinner.stop(
-    pushed.pushed
-      ? `Pushed branch to ${pushed.remoteName}`
+    published.prUrl
+      ? "Pull request created"
+      : published.pushed
+        ? `Pushed branch to ${published.remoteName}`
       : `Push failed for ${remoteName}`,
   );
 
-  if (!pushed.pushed) {
-    showPublishFailure(pushed.error ?? "git push failed");
-    return pushed;
+  if (published.error) {
+    showPublishFailure(published.error);
+    return published;
   }
 
-  if (!hasGitHubCli()) {
+  if (!published.prUrl) {
     showPublishSkipped("GitHub CLI was not found, so no pull request was created.");
-    return pushed;
   }
 
-  const prSpinner = spinner();
-  prSpinner.start("Creating pull request");
-  const pr = createPullRequest(worktree, baseBranch, pushed);
-  prSpinner.stop(pr.prUrl ? "Pull request created" : "Pull request was not created");
-
-  if (pr.error) {
-    showPublishFailure(pr.error);
-    return pr;
-  }
-
-  return pr;
+  return published;
 }
 
 export async function runInteractiveWorkflow(
