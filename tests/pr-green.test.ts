@@ -65,6 +65,7 @@ writeFileSync(path.join(project, "package.json"), '{"name":"pr-green-test","vers
 run("git", ["init", "-q"], project);
 run("git", ["checkout", "-b", "pnpm-migrate/pr-green-test"], project);
 run("git", ["remote", "add", "origin", remote], project);
+run("git", ["remote", "add", "alice", remote], project);
 run("git", ["add", "-A"], project);
 run("git", ["-c", "user.name=test", "-c", "user.email=test@example.invalid", "commit", "-m", "init"], project);
 
@@ -84,8 +85,8 @@ const publish: PublishResult = {
   pullRequestRepo: null,
   prUrl: "https://github.com/example/repo/pull/1",
   pushed: true,
-  remoteBranch: "origin/pnpm-migrate/pr-green-test",
-  remoteName: "origin",
+  remoteBranch: "alice/pnpm-migrate/pr-green-test",
+  remoteName: "alice",
 };
 
 const statuses: string[] = [];
@@ -134,9 +135,9 @@ if (subject !== "Fix pnpm migration CI") {
   throw new Error(`unexpected CI fix commit subject: ${subject}`);
 }
 
-const remoteHeads = run("git", ["ls-remote", "--heads", "origin", "pnpm-migrate/pr-green-test"], project);
+const remoteHeads = run("git", ["ls-remote", "--heads", "alice", "pnpm-migrate/pr-green-test"], project);
 if (!remoteHeads.includes("pnpm-migrate/pr-green-test")) {
-  throw new Error("CI fix commit was not pushed to the remote branch");
+  throw new Error("CI fix commit was not pushed back to the published fork branch");
 }
 
 console.log("PR green smoke passed");
