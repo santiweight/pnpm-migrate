@@ -21,8 +21,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
 
-  clean-and-green-benchmark:
-    name: clean-and-green-philly migration
+  deterministic-e2e:
+    name: deterministic e2e
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:

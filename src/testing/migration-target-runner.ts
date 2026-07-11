@@ -73,7 +73,7 @@ export function materializeGitHubTarget(options: {
   onPhase?: PhaseObserver;
   print?: boolean;
 }): string {
-  const worktree = path.join(options.parentDir, options.id);
+  const worktree = path.resolve(options.parentDir, options.id);
   rmSync(worktree, { recursive: true, force: true });
   mkdirSync(path.dirname(worktree), { recursive: true });
 

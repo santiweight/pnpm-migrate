@@ -29,7 +29,11 @@ Run a subset:
 TARGETS="opencli p5" pnpm benchmark
 ```
 
-CI runs the pinned `clean-and-green-philly` target with `verification=build`, so its migrated Next.js production build must pass without being coupled to unrelated pre-existing lint failures.
+CI runs the pinned `clean-and-green-philly` deterministic e2e smoke from the owned `santiweight/clean-and-green-philly` fork with `verification=build`.
+
+That smoke clones the pinned repo commit, runs the deterministic migration end to end, validates the migrated output, installs with pnpm, and runs the configured local verification script.
+
+`actor-rag-web-browser` is also pinned as a migration-only target. Its local `build`/`test` scripts currently expose strict pnpm transitive dependency issues, so it should become the next e2e smoke after that migration class is handled.
 
 Keep the temporary benchmark directory:
 

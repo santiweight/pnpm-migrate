@@ -63,7 +63,10 @@ function runTarget(options: BenchmarkRunOptions & { target: BenchmarkTarget; log
   const result = runMigrationAndValidate({
     projectPath: worktree,
     repoRoot: options.repoRoot,
-    runProjectVerification: true,
+    runProjectVerification: options.target.verification !== "migration",
+    verificationScripts: options.target.verification === "migration"
+      ? undefined
+      : options.target.verification.replace(/,/g, " "),
     skipInstall: options.skipInstall,
     timeoutSeconds: options.timeoutSeconds,
     onPhase,
