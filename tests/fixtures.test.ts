@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -11,8 +11,7 @@ function readJson(filePath: string): any {
   return JSON.parse(readFileSync(filePath, "utf8"));
 }
 
-function runFixture(name: FixtureName, tmpDir: string): string {
-  const project = materializeFixture(name, tmpDir);
+function migrateProject(project: string): string {
   runOk("npm", ["install", "--package-lock-only"], { cwd: project });
 
   const migrate = runOk("bash", [path.join(repoRoot, "pnpm-migrate.sh"), "--yes", "--skip-agent"], { cwd: project });
@@ -33,6 +32,68 @@ function runFixture(name: FixtureName, tmpDir: string): string {
   assert.ok(setup >= 1);
   assert.equal(lines[setup - 1]?.trim(), "- run: corepack enable");
 
+  return project;
+}
+
+function runFixture(name: FixtureName, tmpDir: string): string {
+  return migrateProject(materializeFixture(name, tmpDir));
+}
+
+function materializeHoistedTypesFixture(parentDir: string): string {
+  const project = path.join(parentDir, "npm-hoisted-types-import");
+  mkdirSync(path.join(project, ".github/workflows"), { recursive: true });
+  writeFileSync(path.join(project, "package.json"), `${JSON.stringify({
+    name: "npm-hoisted-types-import",
+    version: "1.0.0",
+    private: true,
+    scripts: {
+      build: "tsc --noEmit",
+      test: "tsc --noEmit",
+    },
+    dependencies: {
+      "@turf/centroid": "7.2.0",
+    },
+    devDependencies: {
+      typescript: "5.8.2",
+    },
+  }, null, 2)}\n`);
+  writeFileSync(path.join(project, "index.ts"), [
+    'import { Position } from "geojson";',
+    "",
+    "export function firstCoordinate(position: Position): number {",
+    "  return position[0];",
+    "}",
+    "",
+  ].join("\n"));
+  writeFileSync(path.join(project, "tsconfig.json"), `${JSON.stringify({
+    compilerOptions: {
+      module: "NodeNext",
+      moduleResolution: "NodeNext",
+      noEmit: true,
+      strict: true,
+      target: "ES2022",
+    },
+    include: ["index.ts"],
+  }, null, 2)}\n`);
+  writeFileSync(path.join(project, ".github/workflows/ci.yml"), [
+    "name: CI",
+    "",
+    "on:",
+    "  pull_request:",
+    "",
+    "jobs:",
+    "  build:",
+    "    runs-on: ubuntu-latest",
+    "    steps:",
+    "      - uses: actions/checkout@v4",
+    "      - uses: actions/setup-node@v4",
+    "        with:",
+    "          node-version: 22",
+    "          cache: npm",
+    "      - run: npm ci",
+    "      - run: npm test",
+    "",
+  ].join("\n"));
   return project;
 }
 
@@ -73,6 +134,14 @@ test("repairs hoisted import fixture from tag", () => {
   const project = runFixture("npm-hoisted-import", tmpDir);
 
   const pkg = readJson(path.join(project, "package.json"));
-  assert.ok(pkg.devDependencies?.["ansi-styles"]);
+  assert.ok(pkg.dependencies?.["ansi-styles"]);
 });
 
+test("repairs a hoisted DefinitelyTyped import", () => {
+  const tmpDir = mkdtempSync(path.join(os.tmpdir(), "pnpm-migrate-fixtures."));
+  const project = migrateProject(materializeHoistedTypesFixture(tmpDir));
+
+  const pkg = readJson(path.join(project, "package.json"));
+  assert.ok(pkg.devDependencies?.["@types/geojson"]);
+  assert.equal(pkg.dependencies?.["@types/geojson"], undefined);
+});

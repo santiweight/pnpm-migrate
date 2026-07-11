@@ -21,6 +21,24 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
 
+  clean-and-green-benchmark:
+    name: clean-and-green-philly migration
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm benchmark
+        env:
+          TARGETS: clean-and-green-philly
+
   installer-smoke:
     name: installer smoke (${{ matrix.os }}, node ${{ matrix.node-version }})
     runs-on: ${{ matrix.os }}

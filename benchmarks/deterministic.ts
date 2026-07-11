@@ -9,6 +9,7 @@ type Target = {
   id: string;
   repo: string;
   commit: string;
+  verification: "migration" | "scripts";
   notes: string;
 };
 
@@ -26,7 +27,7 @@ function usage(): void {
 
 Environment:
   TARGETS                         Space-separated target ids. Default: all targets.
-  TARGETS_FILE                    TSV with columns: id, repo, commit, notes.
+  TARGETS_FILE                    TSV with columns: id, repo, commit, verification, notes.
   PNPM_MIGRATE_BENCH_ROOT         Directory for temp clones, logs, and results. Default: mktemp.
   PNPM_MIGRATE_BENCH_KEEP_ROOT=1  Keep auto-created temp root after the run.
   PNPM_MIGRATE_BENCH_SKIP_INSTALL=1
@@ -39,11 +40,14 @@ Environment:
 function readTargets(filePath: string): Target[] {
   const lines = readFileSync(filePath, "utf8").trim().split(/\r?\n/);
   return lines.slice(1).filter(Boolean).map((line) => {
-    const [id, repo, commit, notes = ""] = line.split("\t");
+    const [id, repo, commit, verification, notes = ""] = line.split("\t");
     if (!id || !repo || !commit) {
       throw new Error(`invalid benchmark target row: ${line}`);
     }
-    return { id, repo, commit, notes };
+    if (verification !== "migration" && verification !== "scripts") {
+      throw new Error(`invalid benchmark verification mode for ${id}: ${verification}`);
+    }
+    return { id, repo, commit, verification, notes };
   });
 }
 
@@ -159,7 +163,10 @@ function runTarget(
     return 1;
   }
 
-  const migrateArgs = [path.join(repoRoot, "pnpm-migrate.sh"), "--yes", "--skip-agent", "--no-tests"];
+  const migrateArgs = [path.join(repoRoot, "pnpm-migrate.sh"), "--yes", "--skip-agent"];
+  if (target.verification === "migration") {
+    migrateArgs.push("--no-tests");
+  }
   if (skipInstall) {
     migrateArgs.push("--skip-install");
   }
@@ -230,4 +237,3 @@ try {
 }
 
 process.exit(failed);
-
