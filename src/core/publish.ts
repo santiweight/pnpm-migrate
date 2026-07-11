@@ -88,10 +88,18 @@ function existingForkIsValid(worktree: MigrationWorktree, forkRepo: string, upst
   try {
     const details = JSON.parse(result.stdout) as {
       isFork?: boolean;
-      parent?: { nameWithOwner?: string } | null;
+      parent?: {
+        name?: string;
+        nameWithOwner?: string;
+        owner?: { login?: string };
+      } | null;
     };
+    const parentName = details.parent?.nameWithOwner
+      ?? (details.parent?.owner?.login && details.parent.name
+        ? `${details.parent.owner.login}/${details.parent.name}`
+        : null);
     return details.isFork === true
-      && details.parent?.nameWithOwner?.toLowerCase() === upstreamRepo.toLowerCase();
+      && parentName?.toLowerCase() === upstreamRepo.toLowerCase();
   } catch {
     return false;
   }
