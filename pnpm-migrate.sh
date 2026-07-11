@@ -769,12 +769,14 @@ NODE
 
   cat > "$STATE_DIR/upsert-pnpm-allow-builds.js" <<'NODE'
 const fs = require('fs');
+const { spawnSync } = require('child_process');
 
 const inputPaths = process.argv.slice(2);
 const workspacePath = 'pnpm-workspace.yaml';
 const packageNames = new Set();
 
 function stripVersion(name) {
+  name = name.trim().replace(/[.,;:]+$/, '');
   if (name.startsWith('@')) {
     const versionIndex = name.lastIndexOf('@');
     return versionIndex > name.indexOf('/') ? name.slice(0, versionIndex) : name;
@@ -782,46 +784,139 @@ function stripVersion(name) {
   return name.replace(/@.+$/, '');
 }
 
+function collectIgnoredBuilds(input) {
+  const lines = input.split(/\r?\n/).map((line) =>
+    line
+      .replace(/[│╭╮╰╯]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+  );
+  const segments = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const first = lines[index].match(/Ignored build scripts:\s*(.+)$/)?.[1];
+    if (!first) continue;
+
+    const parts = [first];
+    for (let nextIndex = index + 1; nextIndex < lines.length; nextIndex += 1) {
+      const line = lines[nextIndex];
+      if (!line || /^Run\b/.test(line) || /^Warning\b/.test(line)) break;
+      parts.push(line);
+    }
+    segments.push(parts.join(' '));
+  }
+  return segments;
+}
+
 for (const inputPath of inputPaths) {
   const input = fs.existsSync(inputPath) ? fs.readFileSync(inputPath, 'utf8') : '';
-  for (const line of input.split(/\r?\n/)) {
-    const ignored = line.match(/Ignored build scripts:\s*(.+)$/)?.[1];
-    if (ignored) {
-      ignored.split(',').map((name) => name.trim()).filter(Boolean).forEach((name) => {
-        packageNames.add(stripVersion(name));
-      });
-    }
+  for (const ignored of collectIgnoredBuilds(input)) {
+    ignored.split(',').map((name) => name.trim()).filter(Boolean).forEach((name) => {
+      packageNames.add(stripVersion(name));
+    });
   }
 }
 
 const packages = [...packageNames];
 
 if (packages.length === 0) {
-  process.exit(0);
+  process.exit(1);
 }
 
 let text = fs.existsSync(workspacePath) ? fs.readFileSync(workspacePath, 'utf8') : '';
-text = text.replace(/^  (?:'[^']+'|"[^"]+"|(?:@[A-Za-z0-9_.-]+\/)?[A-Za-z0-9_.-]+): set this to true or false\s*\n/gm, '');
-const existing = new Set();
-for (const match of text.matchAll(/^  (?:'([^']+)'|"([^"]+)"|([^:\s][^\s:]*)):\s*(true|false)\s*$/gm)) {
-  existing.add(match[1] || match[2] || match[3]);
+const uniquePackages = [...new Set(packages)];
+
+function pnpmMajor() {
+  const result = spawnSync('pnpm', ['--version'], { encoding: 'utf8' });
+  const version = result.stdout.trim();
+  const major = Number(version.split('.')[0]);
+  return Number.isFinite(major) ? major : 10;
 }
 
-const missing = [...new Set(packages)].filter((name) => !existing.has(name));
-if (missing.length === 0) {
-  process.exit(0);
+function quoteYaml(value) {
+  return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+}
+
+function upsertOnlyBuiltDependencies(text, names) {
+  const existing = new Set();
+  const lines = text.split('\n');
+  let blockIndex = -1;
+  let insertIndex = -1;
+
+  for (let index = 0; index < lines.length; index += 1) {
+    if (/^onlyBuiltDependencies:\s*$/.test(lines[index])) {
+      blockIndex = index;
+      insertIndex = index + 1;
+      for (let next = index + 1; next < lines.length; next += 1) {
+        const line = lines[next];
+        if (/^\s*-\s+/.test(line)) {
+          const value = line.replace(/^\s*-\s+['"]?/, '').replace(/['"]?\s*$/, '');
+          existing.add(value);
+          insertIndex = next + 1;
+          continue;
+        }
+        if (line.trim() === '') {
+          insertIndex = next + 1;
+          continue;
+        }
+        break;
+      }
+      break;
+    }
+  }
+
+  const missingNames = names.filter((name) => !existing.has(name));
+  if (missingNames.length === 0) {
+    return null;
+  }
+
+  if (blockIndex === -1) {
+    if (text && !text.endsWith('\n')) text += '\n';
+    if (text) text += '\n';
+    text += 'onlyBuiltDependencies:\n';
+    for (const name of missingNames) {
+      text += `  - ${quoteYaml(name)}\n`;
+    }
+    return text;
+  }
+
+  const additions = missingNames.map((name) => `  - ${quoteYaml(name)}`);
+  lines.splice(insertIndex, 0, ...additions);
+  return lines.join('\n');
+}
+
+function upsertAllowBuilds(text, names) {
+  text = text.replace(/^  (?:'[^']+'|"[^"]+"|(?:@[A-Za-z0-9_.-]+\/)?[A-Za-z0-9_.-]+): set this to true or false\s*\n/gm, '');
+  const existingAllowBuilds = new Set();
+  for (const match of text.matchAll(/^  (?:'([^']+)'|"([^"]+)"|([^:\s][^\s:]*)):\s*(true|false)\s*$/gm)) {
+    existingAllowBuilds.add(match[1] || match[2] || match[3]);
+  }
+
+  const missingAllowBuilds = names.filter((name) => !existingAllowBuilds.has(name));
+  if (missingAllowBuilds.length === 0) {
+    return null;
+  }
+
+  if (text && !text.endsWith('\n')) text += '\n';
+  if (!/^allowBuilds:\s*$/m.test(text)) {
+    if (text) text += '\n';
+    text += 'allowBuilds:\n';
+  }
+  for (const name of missingAllowBuilds) {
+    text += `  ${quoteYaml(name)}: true\n`;
+  }
+  return text;
 }
 
 if (text && !text.endsWith('\n')) text += '\n';
-if (!/^allowBuilds:\s*$/m.test(text)) {
-  if (text) text += '\n';
-  text += 'allowBuilds:\n';
-}
-for (const name of missing) {
-  text += `  "${name.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}": true\n`;
+const nextText = pnpmMajor() >= 11
+  ? upsertAllowBuilds(text, uniquePackages)
+  : upsertOnlyBuiltDependencies(text, uniquePackages);
+
+if (nextText === null) {
+  process.exit(1);
 }
 
-fs.writeFileSync(workspacePath, text);
+fs.writeFileSync(workspacePath, nextText);
 NODE
 
   cat > "$STATE_DIR/upsert-minimum-release-age-exclude.js" <<'NODE'
@@ -1182,6 +1277,11 @@ install_deps() {
 
   local install_log="$STATE_DIR/pnpm-install.log"
   if pnpm_install 2>&1 | tee "$install_log"; then
+    if node "$STATE_DIR/upsert-pnpm-allow-builds.js" "$install_log"; then
+      log "approved pnpm dependency build scripts reported by pnpm install"
+      pnpm_install
+      pnpm rebuild
+    fi
     return 0
   fi
 
@@ -1189,6 +1289,7 @@ install_deps() {
     if node "$STATE_DIR/upsert-pnpm-allow-builds.js" "$install_log"; then
       log "approved pnpm dependency build scripts reported by pnpm install"
       pnpm_install
+      pnpm rebuild
       return 0
     fi
   fi
@@ -1210,6 +1311,7 @@ install_deps() {
       if node "$STATE_DIR/upsert-pnpm-allow-builds.js" "$install_log"; then
         log "approved pnpm dependency build scripts reported by pnpm install"
         pnpm_install --config.block-exotic-subdeps=false
+        pnpm rebuild
         return 0
       fi
     fi
@@ -1243,7 +1345,8 @@ NODE
 repair_missing_verification_dependencies() {
   local log_path="$1"
   local packages
-  packages="$(node - "$log_path" <<'NODE'
+  local parser="$STATE_DIR/repair-missing-verification-dependencies.js"
+  cat > "$parser" <<'NODE'
 const fs = require('fs');
 const { builtinModules } = require('module');
 
@@ -1298,7 +1401,7 @@ while ((match = pattern.exec(log))) {
 
 console.log([...missing].sort().join('\n'));
 NODE
-)"
+  packages="$(node "$parser" "$log_path")"
   if [ -z "$packages" ]; then
     return 1
   fi
@@ -1324,10 +1427,15 @@ run_verification() {
 const fs = require('fs');
 const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 const scripts = pkg.scripts || {};
-for (const name of ['test', 'build', 'lint']) {
-  if (scripts[name]) {
-    console.log(name);
-    break;
+if (scripts.build && scripts.test) {
+  console.log('build');
+  console.log('test');
+} else {
+  for (const name of ['test', 'build', 'lint']) {
+    if (scripts[name]) {
+      console.log(name);
+      break;
+    }
   }
 }
 NODE
