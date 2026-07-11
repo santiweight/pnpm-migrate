@@ -114,6 +114,7 @@ export function runMigrationAndValidate(options: {
   projectPath: string;
   repoRoot: string;
   runProjectVerification?: boolean;
+  verificationScripts?: string;
   skipInstall?: boolean;
   timeoutSeconds?: number;
   onPhase?: PhaseObserver;
@@ -134,6 +135,9 @@ export function runMigrationAndValidate(options: {
     migrateArgs,
     {
       timeoutSeconds: options.timeoutSeconds,
+      env: options.verificationScripts
+        ? { PNPM_MIGRATE_VERIFY_SCRIPTS: options.verificationScripts }
+        : undefined,
       onPhase: options.onPhase,
       print: options.print,
     },

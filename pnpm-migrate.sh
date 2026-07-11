@@ -1197,6 +1197,91 @@ repair_node_types_dependency() {
   node "$STATE_DIR/repair-node-types-dependency.js"
 }
 
+configure_patch_package_hoists() {
+  if [ "$DRY_RUN" -eq 1 ]; then
+    printf '[dry-run] inspect patch-package patches for pnpm hoisting needs\n'
+    return 0
+  fi
+  [ -d patches ] || return 0
+  find patches -maxdepth 1 -type f -name '*.patch' | grep -q . || return 0
+
+  node <<'NODE' || return 0
+const fs = require('fs');
+
+let pkg;
+try {
+  pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+} catch {
+  process.exit(0);
+}
+
+const deps = {
+  ...pkg.dependencies,
+  ...pkg.devDependencies,
+  ...pkg.optionalDependencies,
+};
+const scripts = Object.values(pkg.scripts || {}).filter((value) => typeof value === 'string');
+const usesPatchPackage = Boolean(deps['patch-package']) || scripts.some((script) => /\bpatch-package\b/.test(script));
+if (!usesPatchPackage) {
+  process.exit(0);
+}
+
+const patches = new Map();
+for (const entry of fs.readdirSync('patches', { withFileTypes: true })) {
+  if (!entry.isFile() || !entry.name.endsWith('.patch')) continue;
+  const base = entry.name.slice(0, -'.patch'.length);
+  const parts = base.split('+');
+  if (parts[0]?.startsWith('@') && parts.length >= 3) {
+    patches.set(`${parts[0]}/${parts[1]}`, parts.slice(2).join('+'));
+  } else if (parts[0]) {
+    patches.set(parts[0], parts.slice(1).join('+'));
+  }
+}
+
+if (patches.size === 0) {
+  process.exit(0);
+}
+
+let packageJsonChanged = false;
+pkg.devDependencies ||= {};
+for (const [packageName, version] of [...patches].sort(([a], [b]) => a.localeCompare(b))) {
+  if (!version || deps[packageName]) continue;
+  pkg.devDependencies[packageName] = version;
+  deps[packageName] = version;
+  packageJsonChanged = true;
+  console.log(`[pnpm-migrate] added devDependency ${packageName}@${version} because patch-package patches it`);
+}
+
+if (packageJsonChanged) {
+  const original = fs.readFileSync('package.json', 'utf8');
+  const indent = original.match(/\n([ \t]+)"/)?.[1] || '  ';
+  fs.writeFileSync('package.json', `${JSON.stringify(pkg, null, indent)}\n`);
+}
+
+const npmrcPath = '.npmrc';
+let text = fs.existsSync(npmrcPath) ? fs.readFileSync(npmrcPath, 'utf8') : '';
+const existingLines = new Set(text.split(/\r?\n/).map((line) => line.trim()));
+const linesToAdd = [];
+for (const packageName of [...patches.keys()].sort()) {
+  for (const key of ['hoist-pattern[]', 'public-hoist-pattern[]']) {
+    const line = `${key}=${packageName}`;
+    if (!existingLines.has(line)) {
+      linesToAdd.push(line);
+    }
+  }
+}
+
+if (linesToAdd.length === 0) {
+  process.exit(0);
+}
+
+if (text && !text.endsWith('\n')) text += '\n';
+text += `${linesToAdd.join('\n')}\n`;
+fs.writeFileSync(npmrcPath, text);
+console.log(`[pnpm-migrate] configured patch-package public hoists: ${[...patches.keys()].sort().join(', ')}`);
+NODE
+}
+
 repair_imported_transitive_dependencies() {
   if [ "$DRY_RUN" -eq 1 ]; then
     printf '[dry-run] inspect source imports for dependencies hidden by npm hoisting\n'
@@ -1426,6 +1511,16 @@ NODE
   return 0
 }
 
+is_missing_playwright_browsers_failure() {
+  local log_path="$1"
+  grep -Eq "pnpm exec playwright install|Executable doesn't exist at .*ms-playwright|Looks like Playwright.*was just installed or updated" "$log_path" || return 1
+  if ! node -e "const p=require('./package.json'); const d={...p.dependencies,...p.devDependencies,...p.optionalDependencies}; process.exit(d.playwright || d['@playwright/test'] ? 0 : 1)"; then
+    return 1
+  fi
+
+  return 0
+}
+
 run_verification() {
   [ "$RUN_TESTS" -eq 1 ] || return 0
   [ "$DRY_RUN" -eq 0 ] || return 0
@@ -1435,15 +1530,10 @@ run_verification() {
 const fs = require('fs');
 const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 const scripts = pkg.scripts || {};
-if (scripts.build && scripts.test) {
-  console.log('build');
-  console.log('test');
-} else {
-  for (const name of ['test', 'build', 'lint']) {
-    if (scripts[name]) {
-      console.log(name);
-      break;
-    }
+const requested = (process.env.PNPM_MIGRATE_VERIFY_SCRIPTS || 'test build lint').split(/[\s,]+/).filter(Boolean);
+for (const name of requested) {
+  if (scripts[name]) {
+    console.log(name);
   }
 }
 NODE
@@ -1458,13 +1548,17 @@ NODE
     if pnpm "$script" 2>&1 | tee "$script_log"; then
       continue
     fi
-
-    if repair_missing_verification_dependencies "$script_log"; then
+    if is_missing_playwright_browsers_failure "$script_log"; then
+      log "pnpm $script needs Playwright browser binaries that are missing from this local machine"
+      log "treating this as an environment prerequisite, not a pnpm migration failure"
+      log "run 'pnpm exec playwright install' in the migrated worktree for local browser test verification"
+      continue
+    fi
+    if [ "${PNPM_MIGRATE_REPAIR_VERIFY_MISSING_DEPS:-0}" = "1" ] && repair_missing_verification_dependencies "$script_log"; then
       log "added missing dependencies; skipping immediate full-suite retry so the eval post step can run cleanly"
       return 0
-    else
-      return 1
     fi
+    return 1
   done
 }
 
@@ -1532,6 +1626,7 @@ main() {
   phase write_pnpm_workspace write_pnpm_workspace_if_needed
   phase set_package_manager set_package_manager
   phase normalize_github_tarballs normalize_github_tarball_dependencies
+  phase configure_patch_package_hoists configure_patch_package_hoists
   phase convert_lockfile convert_lockfile
   phase repair_imported_transitive_deps repair_imported_transitive_dependencies
   phase remove_npm_lockfiles remove_npm_lockfiles
