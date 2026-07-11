@@ -25,11 +25,11 @@ Repos migrated: `bpmn-js`, `dayjs`, `dompurify`, `github-readme-stats`, `html5-b
 
 ## 😌 pnpm-migrate is simple
 
-### ☀️🌈😊 pnpm-migrate
+### ☀️ pnpm-migrate
 
 Paste one-liner. Press enter. Approve the PR that already passed CI.
 
-### 😭😵‍💫😫 Regular migration
+### 😭 Regular migration
 
 Look for the pnpm migration docs. Run commands manually. Mess up the steps; start again. Tell Claude to migrate CI. Realize you forgot to migrate docs. Babysit the PR for 4 days across 10 rebases. Fix the docs, or forget. Wonder why you didn't use `pnpm-migrate`.
 
