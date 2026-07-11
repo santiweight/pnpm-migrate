@@ -15,6 +15,7 @@ RUN_TESTS=1
 TRUST_LOCKFILE="${PNPM_MIGRATE_TRUST_LOCKFILE:-0}"
 TRACE_FILE="${PNPM_MIGRATE_TRACE_FILE:-}"
 BOOTSTRAP_PNPM_VERSION="${PNPM_MIGRATE_BOOTSTRAP_PNPM_VERSION:-}"
+BUILD_APPROVAL_CONFIG="${PNPM_MIGRATE_BUILD_APPROVAL_CONFIG:-auto}"
 COLOR_ENABLED=0
 if [ -z "${NO_COLOR:-}" ] && [ -w /dev/tty ] 2>/dev/null; then
   COLOR_ENABLED=1
@@ -774,6 +775,11 @@ const { spawnSync } = require('child_process');
 const inputPaths = process.argv.slice(2);
 const workspacePath = 'pnpm-workspace.yaml';
 const packageNames = new Set();
+const configMode = process.env.PNPM_MIGRATE_BUILD_APPROVAL_CONFIG || 'auto';
+
+if (configMode === 'off') {
+  process.exit(1);
+}
 
 function stripVersion(name) {
   name = name.trim().replace(/[.,;:]+$/, '');
@@ -826,6 +832,8 @@ let text = fs.existsSync(workspacePath) ? fs.readFileSync(workspacePath, 'utf8')
 const uniquePackages = [...new Set(packages)];
 
 function pnpmMajor() {
+  if (configMode === 'pnpm10') return 10;
+  if (configMode === 'pnpm11') return 11;
   const result = spawnSync('pnpm', ['--version'], { encoding: 'utf8' });
   const version = result.stdout.trim();
   const major = Number(version.split('.')[0]);
