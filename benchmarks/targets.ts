@@ -15,11 +15,11 @@ export function readBenchmarkTargets(filePath: string): BenchmarkTarget[] {
   }
 
   return input.split(/\r?\n/).slice(1).filter(Boolean).map((line) => {
-    const [id, repo, commit, verificationOrNotes = "migration", maybeNotes = ""] = line.split("\t");
+    const [id, repo, commit, verificationOrNotes = "default", maybeNotes = ""] = line.split("\t");
     if (!id || !repo || !commit) {
       throw new Error(`invalid benchmark target row: ${line}`);
     }
-    const verification = maybeNotes ? verificationOrNotes : "migration";
+    const verification = maybeNotes ? verificationOrNotes : "default";
     const notes = maybeNotes || verificationOrNotes;
     return { id, repo, commit, verification, notes };
   });

@@ -13,10 +13,10 @@ function readJson(filePath: string): any {
   return JSON.parse(readFileSync(filePath, "utf8"));
 }
 
-function migrateProject(project: string, runProjectVerification = false): string {
+function migrateProject(project: string): string {
   runCommandOk("npm", ["install", "--package-lock-only"], { cwd: project });
 
-  const result = runMigrationAndValidate({ projectPath: project, repoRoot, runProjectVerification });
+  const result = runMigrationAndValidate({ projectPath: project, repoRoot });
   assert.match(result.migration.output, /\[pnpm-migrate\] state directory: \/tmp\/pnpm-migrate\./);
   assert.equal(result.failed, false, `${result.migration.output}\n${formatValidationResult(result.validation)}`);
 
@@ -288,7 +288,7 @@ test("migrates a patch-package patch for a transitive dependency", (t) => {
 
 test("runs one build-first deterministic verification script", (t) => {
   const tmpDir = makeTempDir(t, "pnpm-migrate-fixtures.");
-  const project = migrateProject(materializeVerificationFixture(tmpDir, "success"), true);
+  const project = migrateProject(materializeVerificationFixture(tmpDir, "success"));
 
   assert.equal(existsSync(path.join(project, ".verification-build-ran")), true);
   assert.equal(existsSync(path.join(project, ".verification-test-ran")), false);
@@ -300,7 +300,7 @@ test("fails fast when static analysis misses a dependency", (t) => {
   const project = materializeVerificationFixture(tmpDir, "missing-dependency");
   runCommandOk("npm", ["install", "--package-lock-only"], { cwd: project });
 
-  const result = runMigrationAndValidate({ projectPath: project, repoRoot, runProjectVerification: true });
+  const result = runMigrationAndValidate({ projectPath: project, repoRoot });
 
   assert.equal(result.failed, true);
   assert.notEqual(result.migration.status, 0, result.migration.output);

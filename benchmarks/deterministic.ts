@@ -13,7 +13,7 @@ function usage(): void {
 
 Environment:
   TARGETS                         Space-separated target ids. Default: all targets.
-  TARGETS_FILE                    TSV with columns: id, repo, commit, notes.
+  TARGETS_FILE                    TSV with columns: id, repo, commit, verification, notes.
   PNPM_MIGRATE_BENCH_ROOT         Directory for temp clones, logs, and results. Default: mktemp.
   PNPM_MIGRATE_BENCH_KEEP_ROOT=1  Keep auto-created temp root after the run.
   PNPM_MIGRATE_BENCH_SKIP_INSTALL=1

@@ -28,7 +28,7 @@ test("reads benchmark target verification scripts", (t) => {
   ]);
 });
 
-test("reads legacy benchmark targets as migration-only", (t) => {
+test("reads legacy benchmark targets with default verification", (t) => {
   const tmpDir = makeTempDir(t, "pnpm-benchmark-targets.");
   const targetsPath = path.join(tmpDir, "targets.tsv");
   writeFileSync(
@@ -45,7 +45,7 @@ test("reads legacy benchmark targets as migration-only", (t) => {
       id: "fixture",
       repo: "owner/repo",
       commit: "abc123",
-      verification: "migration",
+      verification: "default",
       notes: "Legacy row.",
     },
   ]);

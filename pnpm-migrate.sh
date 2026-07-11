@@ -11,7 +11,6 @@ YES=0
 DRY_RUN=0
 SKIP_AGENT=0
 SKIP_INSTALL=0
-RUN_TESTS=1
 TRUST_LOCKFILE="${PNPM_MIGRATE_TRUST_LOCKFILE:-0}"
 TRACE_FILE="${PNPM_MIGRATE_TRACE_FILE:-}"
 BOOTSTRAP_PNPM_VERSION="${PNPM_MIGRATE_BOOTSTRAP_PNPM_VERSION:-}"
@@ -50,7 +49,6 @@ Options:
   --dry-run               Print planned changes without modifying files.
   --skip-agent            Do not run an agent after migration.
   --skip-install          Do not install dependencies.
-  --no-tests              Do not run package verification scripts.
   --trust-lockfile        Trust the generated pnpm lockfile during install.
   -h, --help              Show this help.
 
@@ -182,7 +180,6 @@ parse_args() {
       --dry-run) DRY_RUN=1 ;;
       --skip-agent) SKIP_AGENT=1 ;;
       --skip-install) SKIP_INSTALL=1 ;;
-      --no-tests) RUN_TESTS=0 ;;
       --trust-lockfile) TRUST_LOCKFILE=1 ;;
       -h|--help)
         usage
@@ -1522,7 +1519,6 @@ is_missing_playwright_browsers_failure() {
 }
 
 run_verification() {
-  [ "$RUN_TESTS" -eq 1 ] || return 0
   [ "$DRY_RUN" -eq 0 ] || return 0
 
   local scripts

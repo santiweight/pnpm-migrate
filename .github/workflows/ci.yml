@@ -22,9 +22,15 @@ jobs:
       - run: pnpm check
 
   deterministic-e2e:
-    name: deterministic e2e
+    name: deterministic e2e (${{ matrix.target }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - clean-and-green-philly
+          - actor-rag-web-browser
     steps:
       - uses: actions/checkout@v4
         with:
@@ -37,7 +43,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm benchmark
         env:
-          TARGETS: clean-and-green-philly
+          TARGETS: ${{ matrix.target }}
 
   installer-smoke:
     name: installer smoke (${{ matrix.os }}, node ${{ matrix.node-version }})
