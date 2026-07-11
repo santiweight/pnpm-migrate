@@ -73,7 +73,7 @@ export function materializeGitHubTarget(options: {
   onPhase?: PhaseObserver;
   print?: boolean;
 }): string {
-  const worktree = path.join(options.parentDir, options.id);
+  const worktree = path.resolve(options.parentDir, options.id);
   rmSync(worktree, { recursive: true, force: true });
   mkdirSync(path.dirname(worktree), { recursive: true });
 
@@ -113,7 +113,6 @@ export function materializeGitHubTarget(options: {
 export function runMigrationAndValidate(options: {
   projectPath: string;
   repoRoot: string;
-  runProjectVerification?: boolean;
   verificationScripts?: string;
   skipInstall?: boolean;
   timeoutSeconds?: number;
@@ -121,9 +120,6 @@ export function runMigrationAndValidate(options: {
   print?: boolean;
 }): { failed: boolean; migration: CommandResult; validation: ReturnType<typeof validateMigration> } {
   const migrateArgs = [path.join(options.repoRoot, "pnpm-migrate.sh"), "--yes", "--skip-agent"];
-  if (!options.runProjectVerification) {
-    migrateArgs.push("--no-tests");
-  }
   if (options.skipInstall) {
     migrateArgs.push("--skip-install");
   }

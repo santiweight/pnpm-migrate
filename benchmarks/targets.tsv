@@ -1,11 +1,12 @@
-id	repo	commit	notes
-docsify	docsifyjs/docsify	e6ab47cff0f3d201bb7f2504a5fa46419f4824eb	Docsify lint target.
-highlightjs	highlightjs/highlight.js	d462399821324a40a9885b124de1f2789db31fc6	Syntax highlighter lint target.
-mocha	mochajs/mocha	7ad398ebf14e4a9255984338619907bf485d6a17	Mocha code lint target.
-underscore	jashkenas/underscore	5f37c372ddf593dc20e0edd538296a3efd16b8dc	Underscore lint target.
-winston	winstonjs/winston	4b963a9f5b1ef24efb6250354a108b80c0c6e7d9	Winston lint target.
-magicmirror	MagicMirrorOrg/MagicMirror	4b4a59534f7da01e4030e46029fe9dd649a7675e	Smart mirror app JS lint target.
-opencli	jackwener/OpenCLI	6129bb3953d5eebd8dd67f96802b320c723f50ca	CLI tool typecheck target.
-p5	processing/p5.js	60ca87da4b70c508b9fa245c765bedbb65dac977	Creative coding library lint target.
-semantic-release	semantic-release/semantic-release	8e28dd3d6c126d8c724027f532452d2f1e3ec9d4	Release tool unit-test target.
-clean-and-green-philly	CodeForPhilly/clean-and-green-philly	12e8764807feae02956aa7e652867293bc17351e	Next.js build target covering npm-hoisted @types/geojson.
+id	repo	commit	verification	notes
+docsify	docsifyjs/docsify	e6ab47cff0f3d201bb7f2504a5fa46419f4824eb	lint	Docsify lint target.
+highlightjs	highlightjs/highlight.js	d462399821324a40a9885b124de1f2789db31fc6	lint	Syntax highlighter lint target.
+mocha	mochajs/mocha	7ad398ebf14e4a9255984338619907bf485d6a17	lint	Mocha code lint target.
+underscore	jashkenas/underscore	5f37c372ddf593dc20e0edd538296a3efd16b8dc	lint	Underscore lint target.
+winston	winstonjs/winston	4b963a9f5b1ef24efb6250354a108b80c0c6e7d9	lint	Winston lint target.
+magicmirror	MagicMirrorOrg/MagicMirror	4b4a59534f7da01e4030e46029fe9dd649a7675e	lint	Smart mirror app JS lint target.
+opencli	jackwener/OpenCLI	6129bb3953d5eebd8dd67f96802b320c723f50ca	build	CLI tool typecheck target.
+p5	processing/p5.js	60ca87da4b70c508b9fa245c765bedbb65dac977	lint	Creative coding library lint target.
+semantic-release	semantic-release/semantic-release	8e28dd3d6c126d8c724027f532452d2f1e3ec9d4	test	Release tool unit-test target.
+clean-and-green-philly	santiweight/clean-and-green-philly	12e8764807feae02956aa7e652867293bc17351e	default	Next.js target using the same deterministic verification path as the interactive Continue flow.
+actor-rag-web-browser	apify/actor-rag-web-browser	dc1b177df7c52e71ab6770f15062430af86f830c	default	Actor target using the same deterministic verification path as the interactive Continue flow.

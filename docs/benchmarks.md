@@ -20,7 +20,7 @@ id	repo	commit	verification	notes
 
 `verification` controls which of the target's own verification scripts run:
 
-- `migration` runs deterministic migration and structural validation.
+- `default` runs the same deterministic migration and verification path as the interactive Continue flow.
 - A comma-separated list such as `test,build,lint` runs those scripts when present. Use this for regressions that only appear during compilation or tests.
 
 Run a subset:
@@ -29,7 +29,9 @@ Run a subset:
 TARGETS="opencli p5" pnpm benchmark
 ```
 
-CI runs the pinned `clean-and-green-philly` target with `verification=build`, so its migrated Next.js production build must pass without being coupled to unrelated pre-existing lint failures.
+CI runs pinned deterministic e2e smoke targets for `clean-and-green-philly` and `actor-rag-web-browser`.
+
+Each smoke clones the pinned repo commit, runs the deterministic migration end to end, validates the migrated output, installs with pnpm, and runs the same default project verification path as the interactive Continue flow.
 
 Keep the temporary benchmark directory:
 
@@ -53,6 +55,6 @@ The benchmark contract is:
 
 1. clone the target repo into a temporary directory;
 2. check out the pinned commit in detached HEAD state;
-3. run `pnpm-migrate.sh --yes --skip-agent`, adding `--no-tests` for `migration` targets;
+3. run `pnpm-migrate.sh --yes --skip-agent`;
 4. validate the migrated repo through the shared TypeScript validation API;
 5. write `results.tsv`.
