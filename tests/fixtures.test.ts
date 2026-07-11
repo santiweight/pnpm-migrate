@@ -118,6 +118,14 @@ function materializeVerificationFixture(parentDir: string, mode: "success" | "mi
   }, null, 2)}\n`);
   writeFileSync(
     path.join(project, "verify-test.mjs"),
+    [
+      'import fs from "node:fs";',
+      'fs.writeFileSync(".verification-test-ran", "");',
+      "",
+    ].join("\n"),
+  );
+  writeFileSync(
+    path.join(project, "verify-build.mjs"),
     mode === "missing-dependency"
       ? [
         'const packageName = ["ansi", "styles"].join("-");',
@@ -126,15 +134,10 @@ function materializeVerificationFixture(parentDir: string, mode: "success" | "mi
       ].join("\n")
       : [
         'import fs from "node:fs";',
-        'fs.writeFileSync(".verification-test-ran", "");',
+        'fs.writeFileSync(".verification-build-ran", "");',
         "",
       ].join("\n"),
   );
-  writeFileSync(path.join(project, "verify-build.mjs"), [
-    'import fs from "node:fs";',
-    'fs.writeFileSync(".verification-build-ran", "");',
-    "",
-  ].join("\n"));
   writeFileSync(path.join(project, "verify-lint.mjs"), [
     'import fs from "node:fs";',
     'fs.writeFileSync(".verification-lint-ran", "");',
@@ -283,13 +286,13 @@ test("migrates a patch-package patch for a transitive dependency", (t) => {
   assert.match(readFileSync(path.join(project, "node_modules/ansi-styles/index.js"), "utf8"), /patched by test/);
 });
 
-test("runs every available verification script", (t) => {
+test("runs one build-first deterministic verification script", (t) => {
   const tmpDir = makeTempDir(t, "pnpm-migrate-fixtures.");
   const project = migrateProject(materializeVerificationFixture(tmpDir, "success"), true);
 
-  assert.equal(existsSync(path.join(project, ".verification-test-ran")), true);
   assert.equal(existsSync(path.join(project, ".verification-build-ran")), true);
-  assert.equal(existsSync(path.join(project, ".verification-lint-ran")), true);
+  assert.equal(existsSync(path.join(project, ".verification-test-ran")), false);
+  assert.equal(existsSync(path.join(project, ".verification-lint-ran")), false);
 });
 
 test("fails fast when static analysis misses a dependency", (t) => {
@@ -302,7 +305,7 @@ test("fails fast when static analysis misses a dependency", (t) => {
   assert.equal(result.failed, true);
   assert.notEqual(result.migration.status, 0, result.migration.output);
   assert.match(result.migration.output, /Cannot find package 'ansi-styles'/);
-  assert.equal(existsSync(path.join(project, ".verification-build-ran")), false, result.migration.output);
+  assert.equal(existsSync(path.join(project, ".verification-test-ran")), false, result.migration.output);
   assert.equal(existsSync(path.join(project, ".verification-lint-ran")), false, result.migration.output);
   const pkg = readJson(path.join(project, "package.json"));
   assert.equal(pkg.devDependencies?.["ansi-styles"], undefined);

@@ -42,7 +42,7 @@ import {
   showUncommittedFinish,
 } from "../ui/cards.ts";
 import { askToContinue, chooseRemote } from "../ui/prompts.ts";
-import { clearTerminalView, minimumVisible, sectionPause, uiDelay, uiSpacer } from "../ui/timing.ts";
+import { clearTerminalView, formatElapsedTime, minimumVisible, sectionPause, uiDelay, uiSpacer } from "../ui/timing.ts";
 import type { PreflightEnvironment } from "../core/preflight.ts";
 import { createTelemetry } from "../telemetry.ts";
 
@@ -295,20 +295,33 @@ export async function runInteractiveWorkflow(
   await telemetry.capture("agent_cleanup_started", {
     agent: selectedAgent.id,
   });
+  const cleanupStartedAt = Date.now();
+  let cleanupActivity = "Starting agent cleanup";
+  const renderCleanupProgress = () => {
+    cleanupSpinner.message(
+      `${selectedAgent.label} · ${cleanupActivity} · ${formatElapsedTime(Date.now() - cleanupStartedAt)}`,
+    );
+  };
+
   cleanupSpinner.start(`Running cleanup with ${selectedAgent.label}`);
+  renderCleanupProgress();
+  const cleanupProgressTimer = setInterval(renderCleanupProgress, 1000);
+  cleanupProgressTimer.unref();
   const cleanup = await runCleanup(
     selectedAgent,
     worktree,
     result.logPath,
     (message) => {
-      cleanupSpinner.message(`${selectedAgent.label}: ${message}`);
+      cleanupActivity = message;
+      renderCleanupProgress();
     },
     { sessionId: agentSessionId },
-  );
+  ).finally(() => clearInterval(cleanupProgressTimer));
+  const cleanupDuration = formatElapsedTime(cleanup.run.durationMs);
   cleanupSpinner.stop(
     cleanup.run.code === 0
-      ? `Cleanup finished with ${selectedAgent.label}`
-      : `Cleanup failed with ${selectedAgent.label}`,
+      ? `Cleanup finished with ${selectedAgent.label} in ${cleanupDuration}`
+      : `Cleanup failed with ${selectedAgent.label} after ${cleanupDuration}`,
   );
   uiSpacer();
   showCleanupSummary(cleanup);

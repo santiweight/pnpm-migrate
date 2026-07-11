@@ -32,6 +32,21 @@ export async function uiDelay(ms: number): Promise<void> {
   await sectionPause(ms);
 }
 
+export function formatElapsedTime(ms: number): string {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m ${seconds}s`;
+  }
+  if (minutes > 0) {
+    return `${minutes}m ${seconds}s`;
+  }
+  return `${seconds}s`;
+}
+
 export async function minimumVisible<T>(work: () => T | Promise<T>, ms = 650): Promise<T> {
   const start = Date.now();
   try {
