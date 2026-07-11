@@ -4,6 +4,20 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TMP_DIR="$(mktemp -d)"
 STATE_ROOT="$(mktemp -d)"
+LOG_PATH="$TMP_DIR/pnpm-migrate-installer-smoke.log"
+
+on_error() {
+  local status="$?"
+  if [ -f "$LOG_PATH" ]; then
+    printf '\n--- pnpm-migrate installer smoke log ---\n' >&2
+    cat "$LOG_PATH" >&2
+    printf '%s\n' '--- end pnpm-migrate installer smoke log ---' >&2
+  fi
+  rm -rf "$TMP_DIR" "$STATE_ROOT"
+  exit "$status"
+}
+
+trap on_error ERR
 trap 'rm -rf "$TMP_DIR" "$STATE_ROOT"' EXIT
 
 BIN_DIR="$TMP_DIR/bin"
@@ -99,25 +113,25 @@ PNPM_MIGRATE_AUTO_APPROVE=1 \
 PNPM_MIGRATE_SOURCE_DIR="$ROOT" \
 PNPM_MIGRATE_STATE_ROOT="$STATE_ROOT" \
 PNPM_MIGRATE_TELEMETRY=0 \
-bash "$ROOT/install.sh" >/tmp/pnpm-migrate-installer-smoke.log 2>&1
+bash "$ROOT/install.sh" >"$LOG_PATH" 2>&1
 
 after_head="$(git rev-parse HEAD)"
 after_status="$(git status --porcelain)"
 if [ "$after_head" != "$before_head" ]; then
   printf 'current checkout HEAD changed\n' >&2
-  cat /tmp/pnpm-migrate-installer-smoke.log >&2
+  cat "$LOG_PATH" >&2
   exit 1
 fi
 if [ -n "$after_status" ]; then
   printf 'current checkout was modified:\n%s\n' "$after_status" >&2
-  cat /tmp/pnpm-migrate-installer-smoke.log >&2
+  cat "$LOG_PATH" >&2
   exit 1
 fi
 
 branch="$(git for-each-ref --format='%(refname:short)' refs/heads/pnpm-migrate/ | head -n 1)"
 if [ -z "$branch" ]; then
   printf 'migration branch was not created\n' >&2
-  cat /tmp/pnpm-migrate-installer-smoke.log >&2
+  cat "$LOG_PATH" >&2
   exit 1
 fi
 
@@ -127,7 +141,7 @@ worktree="$(git worktree list --porcelain | awk -v branch="refs/heads/$branch" '
 ')"
 if [ -z "$worktree" ]; then
   printf 'migration worktree for %s was not found\n' "$branch" >&2
-  cat /tmp/pnpm-migrate-installer-smoke.log >&2
+  cat "$LOG_PATH" >&2
   exit 1
 fi
 
