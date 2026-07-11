@@ -70,7 +70,7 @@ test("creates and publishes through a fork when upstream denies writes", (t) => 
     "      echo '{\"isFork\":false,\"parent\":null}'",
     "      exit 0",
     "    fi",
-    "    echo '{\"isFork\":true,\"parent\":{\"nameWithOwner\":\"upstream/project\"}}'",
+    "    echo '{\"isFork\":true,\"parent\":{\"name\":\"project\",\"owner\":{\"login\":\"upstream\"}}}'",
     "    exit 0",
     "  fi",
     "  exit 1",
