@@ -118,15 +118,14 @@ function ensureFork(worktree: MigrationWorktree, forkRepo: string, upstreamRepo:
     return created.stderr || created.stdout || `Could not create fork ${forkRepo}`;
   }
 
-  for (let attempt = 0; attempt < 5; attempt++) {
+  for (let attempt = 0; attempt < 20; attempt++) {
     const valid = existingForkIsValid(worktree, forkRepo, upstreamRepo);
     if (valid === true) {
       return null;
     }
-    if (valid === false) {
-      return `Created ${forkRepo}, but it is not a fork of ${upstreamRepo}`;
-    }
-    sleep(400);
+    // GitHub can expose a newly created repository before its fork metadata
+    // and parent relationship are available through the API.
+    sleep(500);
   }
 
   return `Created ${forkRepo}, but could not verify the fork`;
