@@ -13,6 +13,11 @@ on_error() {
     cat "$LOG_PATH" >&2
     printf '%s\n' '--- end pnpm-migrate installer smoke log ---' >&2
   fi
+  find "$STATE_ROOT" -name 'deterministic-migration.log' -type f -print | while IFS= read -r log; do
+    printf '\n--- %s ---\n' "$log" >&2
+    cat "$log" >&2
+    printf '%s\n' "--- end $log ---" >&2
+  done
   rm -rf "$TMP_DIR" "$STATE_ROOT"
   exit "$status"
 }

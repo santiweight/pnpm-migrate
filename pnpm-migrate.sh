@@ -13,6 +13,7 @@ SKIP_INSTALL=0
 RUN_TESTS=1
 TRUST_LOCKFILE="${PNPM_MIGRATE_TRUST_LOCKFILE:-0}"
 TRACE_FILE="${PNPM_MIGRATE_TRACE_FILE:-}"
+BOOTSTRAP_PNPM_VERSION="${PNPM_MIGRATE_BOOTSTRAP_PNPM_VERSION:-}"
 COLOR_ENABLED=0
 if [ -z "${NO_COLOR:-}" ] && [ -w /dev/tty ] 2>/dev/null; then
   COLOR_ENABLED=1
@@ -67,6 +68,10 @@ fail() {
 
 tty_available() {
   [ -r /dev/tty ] && [ -w /dev/tty ]
+}
+
+pnpm_works() {
+  COREPACK_ENABLE_PROJECT_SPEC=0 COREPACK_ENABLE_STRICT=0 pnpm --version >/dev/null 2>&1
 }
 
 ui_printf() {
@@ -248,15 +253,28 @@ preflight() {
     fail "node is required"
   fi
 
-  if ! command -v pnpm >/dev/null 2>&1; then
+  if ! command -v pnpm >/dev/null 2>&1 || ! pnpm_works; then
     if command -v corepack >/dev/null 2>&1; then
-      log "pnpm not found; enabling via corepack"
+      local bootstrap_version
+      bootstrap_version="$BOOTSTRAP_PNPM_VERSION"
+      if [ -z "$bootstrap_version" ]; then
+        local node_major
+        node_major="$(node -p 'Number(process.versions.node.split(".")[0])')"
+        if [ "$node_major" -ge 22 ]; then
+          bootstrap_version="11.8.0"
+        else
+          bootstrap_version="10.17.1"
+        fi
+      fi
+      log "pnpm not available; enabling pnpm@$bootstrap_version via corepack"
       run corepack enable
-      run corepack prepare pnpm@latest --activate
+      run env COREPACK_ENABLE_PROJECT_SPEC=0 COREPACK_ENABLE_STRICT=0 corepack prepare "pnpm@$bootstrap_version" --activate
     else
       fail "pnpm is not installed and corepack is unavailable"
     fi
   fi
+
+  pnpm_works || fail "pnpm is installed but could not run"
 
   if [ "$AGENT" = "claude" ]; then
     command -v claude >/dev/null 2>&1 || fail "claude is not installed"
