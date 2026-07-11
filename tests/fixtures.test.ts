@@ -150,3 +150,75 @@ test("repairs a hoisted DefinitelyTyped import", (t) => {
   assert.ok(pkg.devDependencies?.["@types/geojson"]);
   assert.equal(pkg.dependencies?.["@types/geojson"], undefined);
 });
+
+test("migrates a patch-package patch for a transitive dependency", (t) => {
+  const tmpDir = makeTempDir(t, "pnpm-migrate-patch-package.");
+  const project = path.join(tmpDir, "project");
+  mkdirSync(path.join(project, ".github/workflows"), { recursive: true });
+  mkdirSync(path.join(project, "patches"), { recursive: true });
+
+  writeFileSync(path.join(project, "package.json"), `${JSON.stringify({
+    name: "patch-package-fixture",
+    version: "1.0.0",
+    private: true,
+    scripts: {
+      postinstall: "patch-package",
+      test: "node index.test.js",
+    },
+    dependencies: {
+      chalk: "^4.1.2",
+      "patch-package": "^8.0.1",
+    },
+  }, null, 2)}\n`);
+  writeFileSync(path.join(project, "index.test.js"), [
+    "const assert = require('node:assert/strict');",
+    "const chalk = require('chalk');",
+    "chalk.level = 1;",
+    "assert.equal(chalk.green('ok'), '\\u001B[32mok\\u001B[39m');",
+    "",
+  ].join("\n"));
+  writeFileSync(path.join(project, ".github/workflows/ci.yml"), [
+    "name: CI",
+    "",
+    "on:",
+    "  pull_request:",
+    "",
+    "jobs:",
+    "  test:",
+    "    runs-on: ubuntu-latest",
+    "    steps:",
+    "      - uses: actions/checkout@v4",
+    "      - uses: actions/setup-node@v4",
+    "        with:",
+    "          node-version: 22",
+    "          cache: npm",
+    "      - run: npm ci",
+    "      - run: npm test",
+    "",
+  ].join("\n"));
+  writeFileSync(path.join(project, "patches/ansi-styles+4.3.0.patch"), [
+    "diff --git a/node_modules/ansi-styles/index.js b/node_modules/ansi-styles/index.js",
+    "index 5d82581..f0d2f24 100644",
+    "--- a/node_modules/ansi-styles/index.js",
+    "+++ b/node_modules/ansi-styles/index.js",
+    "@@ -1,4 +1,5 @@",
+    " 'use strict';",
+    "+// patched by test",
+    " ",
+    " const wrapAnsi16 = (fn, offset) => (...args) => {",
+    " \tconst code = fn(...args);",
+    "",
+  ].join("\n"));
+
+  runCommandOk("npm", ["install", "--package-lock-only", "--ignore-scripts"], { cwd: project });
+
+  const result = runMigrationAndValidate({ projectPath: project, repoRoot });
+  assert.equal(result.failed, false, `${result.migration.output}\n${formatValidationResult(result.validation)}`);
+  assert.match(result.migration.output, /configured patch-package public hoists: ansi-styles/);
+
+  const npmrc = readFileSync(path.join(project, ".npmrc"), "utf8");
+  assert.match(npmrc, /^hoist-pattern\[\]=ansi-styles$/m);
+  assert.match(npmrc, /^public-hoist-pattern\[\]=ansi-styles$/m);
+  assert.equal(readJson(path.join(project, "package.json")).devDependencies?.["ansi-styles"], "4.3.0");
+  assert.match(readFileSync(path.join(project, "node_modules/ansi-styles/index.js"), "utf8"), /patched by test/);
+});
