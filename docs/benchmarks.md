@@ -18,10 +18,10 @@ Target rows have this shape:
 id	repo	commit	verification	notes
 ```
 
-`verification` controls whether the migration runs the target's own verification scripts:
+`verification` controls which of the target's own verification scripts run:
 
 - `migration` runs deterministic migration and structural validation.
-- `scripts` additionally runs the target's selected build/test script. Use this for regressions that only appear during compilation or tests.
+- A comma-separated list such as `test,build,lint` runs those scripts when present. Use this for regressions that only appear during compilation or tests.
 
 Run a subset:
 
@@ -29,7 +29,7 @@ Run a subset:
 TARGETS="opencli p5" pnpm benchmark
 ```
 
-CI runs the pinned `clean-and-green-philly` target with `verification=scripts`, so its migrated Next.js production build must pass.
+CI runs the pinned `clean-and-green-philly` target with `verification=build`, so its migrated Next.js production build must pass without being coupled to unrelated pre-existing lint failures.
 
 Keep the temporary benchmark directory:
 

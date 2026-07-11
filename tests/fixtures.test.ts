@@ -13,10 +13,10 @@ function readJson(filePath: string): any {
   return JSON.parse(readFileSync(filePath, "utf8"));
 }
 
-function migrateProject(project: string): string {
+function migrateProject(project: string, runProjectVerification = false): string {
   runCommandOk("npm", ["install", "--package-lock-only"], { cwd: project });
 
-  const result = runMigrationAndValidate({ projectPath: project, repoRoot });
+  const result = runMigrationAndValidate({ projectPath: project, repoRoot, runProjectVerification });
   assert.match(result.migration.output, /\[pnpm-migrate\] state directory: \/tmp\/pnpm-migrate\./);
   assert.equal(result.failed, false, `${result.migration.output}\n${formatValidationResult(result.validation)}`);
 
@@ -88,6 +88,66 @@ function materializeHoistedTypesFixture(parentDir: string): string {
     "",
     "jobs:",
     "  build:",
+    "    runs-on: ubuntu-latest",
+    "    steps:",
+    "      - uses: actions/checkout@v4",
+    "      - uses: actions/setup-node@v4",
+    "        with:",
+    "          node-version: 22",
+    "          cache: npm",
+    "      - run: npm ci",
+    "      - run: npm test",
+    "",
+  ].join("\n"));
+  return project;
+}
+
+function materializeVerificationFixture(parentDir: string, mode: "success" | "missing-dependency"): string {
+  const project = path.join(parentDir, `verification-${mode}`);
+  mkdirSync(path.join(project, ".github/workflows"), { recursive: true });
+  writeFileSync(path.join(project, "package.json"), `${JSON.stringify({
+    name: `verification-${mode}`,
+    version: "1.0.0",
+    private: true,
+    scripts: {
+      test: "node verify-test.mjs",
+      build: "node verify-build.mjs",
+      lint: "node verify-lint.mjs",
+    },
+    ...(mode === "missing-dependency" ? { dependencies: { chalk: "4.1.2" } } : {}),
+  }, null, 2)}\n`);
+  writeFileSync(
+    path.join(project, "verify-test.mjs"),
+    mode === "missing-dependency"
+      ? [
+        'const packageName = ["ansi", "styles"].join("-");',
+        "await import(packageName);",
+        "",
+      ].join("\n")
+      : [
+        'import fs from "node:fs";',
+        'fs.writeFileSync(".verification-test-ran", "");',
+        "",
+      ].join("\n"),
+  );
+  writeFileSync(path.join(project, "verify-build.mjs"), [
+    'import fs from "node:fs";',
+    'fs.writeFileSync(".verification-build-ran", "");',
+    "",
+  ].join("\n"));
+  writeFileSync(path.join(project, "verify-lint.mjs"), [
+    'import fs from "node:fs";',
+    'fs.writeFileSync(".verification-lint-ran", "");',
+    "",
+  ].join("\n"));
+  writeFileSync(path.join(project, ".github/workflows/ci.yml"), [
+    "name: CI",
+    "",
+    "on:",
+    "  pull_request:",
+    "",
+    "jobs:",
+    "  verify:",
     "    runs-on: ubuntu-latest",
     "    steps:",
     "      - uses: actions/checkout@v4",
@@ -221,4 +281,29 @@ test("migrates a patch-package patch for a transitive dependency", (t) => {
   assert.match(npmrc, /^public-hoist-pattern\[\]=ansi-styles$/m);
   assert.equal(readJson(path.join(project, "package.json")).devDependencies?.["ansi-styles"], "4.3.0");
   assert.match(readFileSync(path.join(project, "node_modules/ansi-styles/index.js"), "utf8"), /patched by test/);
+});
+
+test("runs every available verification script", (t) => {
+  const tmpDir = makeTempDir(t, "pnpm-migrate-fixtures.");
+  const project = migrateProject(materializeVerificationFixture(tmpDir, "success"), true);
+
+  assert.equal(existsSync(path.join(project, ".verification-test-ran")), true);
+  assert.equal(existsSync(path.join(project, ".verification-build-ran")), true);
+  assert.equal(existsSync(path.join(project, ".verification-lint-ran")), true);
+});
+
+test("fails fast when static analysis misses a dependency", (t) => {
+  const tmpDir = makeTempDir(t, "pnpm-migrate-fixtures.");
+  const project = materializeVerificationFixture(tmpDir, "missing-dependency");
+  runCommandOk("npm", ["install", "--package-lock-only"], { cwd: project });
+
+  const result = runMigrationAndValidate({ projectPath: project, repoRoot, runProjectVerification: true });
+
+  assert.equal(result.failed, true);
+  assert.notEqual(result.migration.status, 0, result.migration.output);
+  assert.match(result.migration.output, /Cannot find package 'ansi-styles'/);
+  assert.equal(existsSync(path.join(project, ".verification-build-ran")), false, result.migration.output);
+  assert.equal(existsSync(path.join(project, ".verification-lint-ran")), false, result.migration.output);
+  const pkg = readJson(path.join(project, "package.json"));
+  assert.equal(pkg.devDependencies?.["ansi-styles"], undefined);
 });
