@@ -39,6 +39,7 @@ grep -q 'npm install npm-basic --save' README.md
 grep -q 'npm install --save-dev npm-basic' README.md
 grep -q 'npm publish' README.md
 grep -q 'Contributor checks: `pnpm test && pnpm build`' README.md
+node -e "const s=require('./package.json').scripts; if (s.prepare !== 'pnpm run patch') process.exit(1); if (s.patch !== 'node -e \"process.exit(0)\"') process.exit(1)"
 
 run_fixture npm-workspace
 

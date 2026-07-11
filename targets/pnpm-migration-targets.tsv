@@ -1,61 +1,61 @@
-id	repo	branch	install_cmd	baseline_cmd	post_migrate_cmd	notes
-html5-boilerplate	h5bp/html5-boilerplate	main	npm ci	npm test	pnpm test	Mature frontend template with Gulp archive generation and Mocha tests.
-jsdoc	jsdoc/jsdoc	main	npm install	npm test	pnpm test	Large npm workspace repo; good monorepo migration candidate.
-dompurify	cure53/DOMPurify	main	npm ci	npm test	pnpm test	Popular single package with npm scripts in package.json and CI.
-markdown-it	markdown-it/markdown-it	master	npm ci	npm test	pnpm test	Mature package with smaller package surface and npm CI cache usage.
-bpmn-js	bpmn-io/bpmn-js	develop	npm ci	npm test	pnpm test	Build/test pipeline uses karma; useful browser/test complexity candidate.
-jquery	jquery/jquery	main	npm ci	npm run test:jsdom	pnpm test:jsdom	Mature JS library with dynamic workflow scripts, build steps, and jsdom tests.
-dayjs	iamkun/dayjs	dev	npm ci	TZ=UTC npm test	TZ=UTC pnpm test	Popular date library with timezone-sensitive Jest tests pinned to UTC for fair local comparison.
-uuid	uuidjs/uuid	main	npm ci	npm test	pnpm test	Popular UUID library with build, docs, examples, and Node tests.
-lodash	lodash/lodash	main	npm ci	npm test	pnpm test	Mature utility library with custom build/test scripts.
-github-readme-stats	anuraghazra/github-readme-stats	master	npm ci	npm test	pnpm test	Popular stats-card service with Jest coverage and lint/docs scripts.
-javascript-algorithms	trekhleb/javascript-algorithms	master	npm ci	npm test	pnpm test	Algorithms repo with Jest tests.
-koa	koajs/koa	master	npm ci	npm test	pnpm test	Node library with node:test suite.
-drawio-desktop	jgraph/drawio-desktop	dev	npm ci	npm test	pnpm test	Electron desktop app with node test smoke.
-leaflet	Leaflet/Leaflet	main	npm ci	npm run lint	pnpm lint	Map library lint target that avoids browser install.
-thirty-three-js-concepts	leonardomso/33-js-concepts	master	npm ci	npm test	pnpm test	Vitest examples repo.
-drawdb	drawdb-io/drawdb	main	npm ci	npm run build	pnpm build	Vite app build target.
-impress	impress/impress.js	master	npm ci	npm run lint	pnpm lint	Legacy presentation framework lint target.
-monaco-editor	microsoft/monaco-editor	main	npm ci	npm run test:grammars	pnpm test:grammars	Editor grammar tests.
-remote-jobs	remoteintech/remote-jobs	main	npm ci	npm run build	pnpm build	Eleventy/Pagefind static site build.
-wtfjs	denysdovhan/wtfjs	master	npm ci	npm test	pnpm test	Prettier-check docs repo.
-bmad-method	bmad-code-org/BMAD-METHOD	main	npm ci	npm test	pnpm test	Docs/tooling repo with strict format checks.
-htmx	bigskysoftware/htmx	master	npm ci	npm run lint	pnpm lint	Library lint target avoiding browser install.
-iptv	iptv-org/iptv	master	npm ci	npm test	pnpm test	Playlist repo with Jest tests and postinstall script.
-swiper	nolimits4web/swiper	master	npm ci	npm run validate	pnpm validate	UI library validate script.
-videojs	videojs/video.js	main	npm ci	npm run lint	pnpm lint	Video player lint target.
-zx	google/zx	main	npm ci	npm run fmt:check	pnpm fmt:check	CLI repo with Deno npm: protocol validator case.
-codegraph	colbymchenry/codegraph	main	npm ci	npm run build	pnpm build	TypeScript CLI build target.
-hexo	hexojs/hexo	master	npm ci	npm run build	pnpm build	Blog framework build target.
-pixijs	pixijs/pixijs	dev	npm ci	npm run test:lint	pnpm test:lint	Rendering library lint target.
-quill	slab/quill	main	npm ci	npm run lint	pnpm lint	Workspace editor lint target.
-tesseract	naptha/tesseract.js	master	npm ci	npm run lint	pnpm lint	OCR library lint target.
-moment	moment/moment	develop	npm ci	npm test	pnpm test	Date library known out-of-sample test target.
-lerna	lerna/lerna	main	npm ci	npm run format:check	pnpm format:check	Monorepo tool format check target.
-upscayl	upscayl/upscayl	main	npm ci	npm run tsc	pnpm tsc	Electron app TypeScript compile target.
-marked	markedjs/marked	master	npm ci	npm run build	pnpm build	Markdown parser build target.
-commander	tj/commander.js	master	npm ci	npm run check	pnpm check	CLI library full check target.
-backbone	jashkenas/backbone	master	npm ci	npm run lint	pnpm lint	Backbone lint target.
-cheerio	cheeriojs/cheerio	main	npm ci	npm run lint:ts	pnpm lint:ts	Cheerio TypeScript lint target.
-nodemon	remy/nodemon	main	npm ci	npm run lint	pnpm lint	Nodemon lint target.
-ramda	ramda/ramda	master	npm ci	npm run lint	pnpm lint	Ramda lint target.
-algorithms-js	TheAlgorithms/JavaScript	master	npm ci	npm run check-style	pnpm check-style	Algorithms style target.
-docsify	docsifyjs/docsify	develop	npm ci	npm run lint	pnpm lint	Docsify lint target.
-heroicons	tailwindlabs/heroicons	master	npm ci	npm run lint	pnpm lint	Icon library lint target.
-highlightjs	highlightjs/highlight.js	main	npm ci	npm run lint	pnpm lint	Syntax highlighter lint target.
-html2canvas	niklasvh/html2canvas	master	npm ci	npm run lint	pnpm lint	HTML canvas renderer lint target.
-jspdf	parallax/jsPDF	master	npm ci	npm run lint	pnpm lint	PDF library lint target.
-mocha	mochajs/mocha	main	npm ci	npm run lint:code	pnpm lint:code	Mocha code lint target.
-nginxconfig	digitalocean/nginxconfig.io	master	npm ci	npm run test:eslint	pnpm test:eslint	NGINX config lint target.
-pure-css	pure-css/pure	main	npm ci	npm run lint	pnpm lint	CSS framework lint target.
-sortable	SortableJS/Sortable	master	npm ci	npm run build	pnpm build	Sortable build target.
-underscore	jashkenas/underscore	master	npm ci	npm run lint	pnpm lint	Underscore lint target.
-winston	winstonjs/winston	master	npm ci	npm run lint	pnpm lint	Winston lint target.
-layui	layui/layui	main	npm ci	npm run lint	pnpm lint	UI library lint target.
-modernizr	Modernizr/Modernizr	master	npm ci	npm run lint	pnpm lint	Modernizr lint target.
-node-red	node-red/node-red	main	npm ci	npm run lint	pnpm lint	Node-RED lint target.
-claude-hud	jarrodwatts/claude-hud	main	npm ci	npm run build	pnpm build	Claude Code plugin build target.
-magicmirror	MagicMirrorOrg/MagicMirror	master	npm ci	npm run lint:js	pnpm lint:js	Smart mirror app JS lint target.
-opencli	jackwener/OpenCLI	main	npm ci	npm run typecheck	pnpm typecheck	CLI tool typecheck target.
-p5	processing/p5.js	main	npm ci	npm run lint	pnpm lint	Creative coding library lint target.
-semantic-release	semantic-release/semantic-release	master	npm ci	npm run test:unit	pnpm test:unit	Release tool unit-test target.
+id	repo	commit	install_cmd	baseline_cmd	post_migrate_cmd	notes
+html5-boilerplate	h5bp/html5-boilerplate	b7e31d67f4cf83e23d51f4decc73618bf8bd77ba	npm ci	npm test	pnpm test	Mature frontend template with Gulp archive generation and Mocha tests.
+jsdoc	jsdoc/jsdoc	61e8289b0f7f8b340179ea4a768d7310396cb0ca	npm install	npm test	pnpm test	Large npm workspace repo; good monorepo migration candidate.
+dompurify	cure53/DOMPurify	a35824c00bbfc9fea4ef4d16e29a81b89fe9b389	npm ci	npm test	pnpm test	Popular single package with npm scripts in package.json and CI.
+markdown-it	markdown-it/markdown-it	2d9bbea7df2ab1a48caecfafc39cb8599f193d3c	npm ci	npm test	pnpm test	Mature package with smaller package surface and npm CI cache usage.
+bpmn-js	bpmn-io/bpmn-js	84812f7ad7352208a2d34d913a4ddaa60306e100	npm ci	npm test	pnpm test	Build/test pipeline uses karma; useful browser/test complexity candidate.
+jquery	jquery/jquery	d6fb53bce28d597ac309ec81efe761bd410bdf41	npm ci	npm run test:jsdom	pnpm test:jsdom	Mature JS library with dynamic workflow scripts, build steps, and jsdom tests.
+dayjs	iamkun/dayjs	98364bcebc047529345cc8c2bbcc44a6a8c18e79	npm ci	TZ=UTC npm test	TZ=UTC pnpm test	Popular date library with timezone-sensitive Jest tests pinned to UTC for fair local comparison.
+uuid	uuidjs/uuid	ea83515d6a4de13a8f9d253fe772752c9dd7bbbe	npm ci	npm test	pnpm test	Popular UUID library with build, docs, examples, and Node tests.
+lodash	lodash/lodash	a666ba591064c8011988275790ad7d625279f09c	npm ci	npm test	pnpm test	Mature utility library with custom build/test scripts.
+github-readme-stats	anuraghazra/github-readme-stats	54a7985aeefda00d5eadb55b80c17c7f976c37d2	npm ci	npm test	pnpm test	Popular stats-card service with Jest coverage and lint/docs scripts.
+javascript-algorithms	trekhleb/javascript-algorithms	0f52fbaced5d33041a5a834f72f880a9262bcb82	npm ci	npm test	pnpm test	Algorithms repo with Jest tests.
+koa	koajs/koa	52d5e8ff5ac79f2479463b53df2999900ae95115	npm ci	npm test	pnpm test	Node library with node:test suite.
+drawio-desktop	jgraph/drawio-desktop	9dd91e0ea45555d491f3307a1a93d799f3f563e5	npm ci	npm test	pnpm test	Electron desktop app with node test smoke.
+leaflet	Leaflet/Leaflet	300cce51fed23ac5c2dbc7491b02cfc84e3393fc	npm ci	npm run lint	pnpm lint	Map library lint target that avoids browser install.
+thirty-three-js-concepts	leonardomso/33-js-concepts	16d0d95c02b19df6a8c841f1a0012d7b7367a340	npm ci	npm test	pnpm test	Vitest examples repo.
+drawdb	drawdb-io/drawdb	b24ad20b6588b9b99609e8a03b87efa7b28cf245	npm ci	npm run build	pnpm build	Vite app build target.
+impress	impress/impress.js	c9f6c67457ceee5a011e554f67c447113640777d	npm ci	npm run lint	pnpm lint	Legacy presentation framework lint target.
+monaco-editor	microsoft/monaco-editor	d8c9ff06b7bcbd0c07d1ccb16e3d30f5e5962d08	npm ci	npm run test:grammars	pnpm test:grammars	Editor grammar tests.
+remote-jobs	remoteintech/remote-jobs	acffb49fd1ab2c05f249f7ca5b80709ffb6d0fc9	npm ci	npm run build	pnpm build	Eleventy/Pagefind static site build.
+wtfjs	denysdovhan/wtfjs	2c00c4a5759c3d8a37b1237619ea664c16ce90ee	npm ci	npm test	pnpm test	Prettier-check docs repo.
+bmad-method	bmad-code-org/BMAD-METHOD	49069b8b5276afd21402bc3b978b69ad78a7d2ef	npm ci	npm test	pnpm test	Docs/tooling repo with strict format checks.
+htmx	bigskysoftware/htmx	4dd2685fbed0b3985f0475756f1d79b0c9ad5686	npm ci	npm run lint	pnpm lint	Library lint target avoiding browser install.
+iptv	iptv-org/iptv	aa08e2f24a539375ce7e16ad03869526b00f87b0	npm ci	npm test	pnpm test	Playlist repo with Jest tests and postinstall script.
+swiper	nolimits4web/swiper	b3d9e1ff489e1bc02a94fdd52b46c9237bb247c4	npm ci	npm run validate	pnpm validate	UI library validate script.
+videojs	videojs/video.js	1ce2b219f450842455e120518bf669e1d5b2ae38	npm ci	npm run lint	pnpm lint	Video player lint target.
+zx	google/zx	00a2c484e219c2e84bfc3a199febf7fbce2cfbf4	npm ci	npm run fmt:check	pnpm fmt:check	CLI repo with Deno npm: protocol validator case.
+codegraph	colbymchenry/codegraph	ecc8b307ac2f8a7d06bff02ee513c4ea2380b2f8	npm ci	npm run build	pnpm build	TypeScript CLI build target.
+hexo	hexojs/hexo	a16a7e609f8d3786d21d65e98ffcf602eecbc0f6	npm ci	npm run build	pnpm build	Blog framework build target.
+pixijs	pixijs/pixijs	497a53ca60e3c46ca01cd3efbb9ca0a4f37e3b10	npm ci	npm run test:lint	pnpm test:lint	Rendering library lint target.
+quill	slab/quill	539cbffd0a13b18e9c65eb84dd35e6596e403158	npm ci	npm run lint	pnpm lint	Workspace editor lint target.
+tesseract	naptha/tesseract.js	a1ca80d9e31c34512d0ded75ff8821ddcf3f2f91	npm ci	npm run lint	pnpm lint	OCR library lint target.
+moment	moment/moment	18aba135ab927ffe7f868ee09276979bed6993a6	npm ci	npm test	pnpm test	Date library known out-of-sample test target.
+lerna	lerna/lerna	294e33a2a6885bb34fdd8e48125eaf80d1058db1	npm ci	npm run format:check	pnpm format:check	Monorepo tool format check target.
+upscayl	upscayl/upscayl	a00d55fee90e0f9435d5eaa86e76700df8199af8	npm ci	npm run tsc	pnpm tsc	Electron app TypeScript compile target.
+marked	markedjs/marked	39bd884c5f17a8370cf957b8d46a15751868ab4d	npm ci	npm run build	pnpm build	Markdown parser build target.
+commander	tj/commander.js	ba6d13ddb4243e5913367734f8c159089ffe7834	npm ci	npm run check	pnpm check	CLI library full check target.
+backbone	jashkenas/backbone	cbeb7e31d95f64dbe92f2202c1131858f905280e	npm ci	npm run lint	pnpm lint	Backbone lint target.
+cheerio	cheeriojs/cheerio	7221d7dac0c90876eaf7546ca99906021d5bcbaf	npm ci	npm run lint:ts	pnpm lint:ts	Cheerio TypeScript lint target.
+nodemon	remy/nodemon	bb8b04ec86594af247d44ef9b18c676b239be616	npm ci	npm run lint	pnpm lint	Nodemon lint target.
+ramda	ramda/ramda	bcb320e60b5d91c958a6b02feb0bd8658d744298	npm ci	npm run lint	pnpm lint	Ramda lint target.
+algorithms-js	TheAlgorithms/JavaScript	5c39e87a9a31f279c60f830ad74a845e4788a517	npm ci	npm run check-style	pnpm check-style	Algorithms style target.
+docsify	docsifyjs/docsify	e6ab47cff0f3d201bb7f2504a5fa46419f4824eb	npm ci	npm run lint	pnpm lint	Docsify lint target.
+heroicons	tailwindlabs/heroicons	616b7a4dbbf3d011760af8066262cd5c6b3868f3	npm ci	npm run lint	pnpm lint	Icon library lint target.
+highlightjs	highlightjs/highlight.js	d462399821324a40a9885b124de1f2789db31fc6	npm ci	npm run lint	pnpm lint	Syntax highlighter lint target.
+html2canvas	niklasvh/html2canvas	6020386bbeed60ad68e675fdcaa6220e292fd35a	npm ci	npm run lint	pnpm lint	HTML canvas renderer lint target.
+jspdf	parallax/jsPDF	a3930ce03a585a26b2c76d12a0f413ce96f6d1a3	npm ci	npm run lint	pnpm lint	PDF library lint target.
+mocha	mochajs/mocha	7ad398ebf14e4a9255984338619907bf485d6a17	npm ci	npm run lint:code	pnpm lint:code	Mocha code lint target.
+nginxconfig	digitalocean/nginxconfig.io	dd290c0b706b8a8c2f86cfbffaae9c17715b431d	npm ci	npm run test:eslint	pnpm test:eslint	NGINX config lint target.
+pure-css	pure-css/pure	d35fb6fcbcd888da11a7215fe61d1efeda374699	npm ci	npm run lint	pnpm lint	CSS framework lint target.
+sortable	SortableJS/Sortable	48b626bbc61afbb0f179730c1dd3cca3dcc8b788	npm ci	npm run build	pnpm build	Sortable build target.
+underscore	jashkenas/underscore	5f37c372ddf593dc20e0edd538296a3efd16b8dc	npm ci	npm run lint	pnpm lint	Underscore lint target.
+winston	winstonjs/winston	4b963a9f5b1ef24efb6250354a108b80c0c6e7d9	npm ci	npm run lint	pnpm lint	Winston lint target.
+layui	layui/layui	15166ab66e77fcc66f98cae366d92d044c196a7f	npm ci	npm run lint	pnpm lint	UI library lint target.
+modernizr	Modernizr/Modernizr	5e368edec4dcbc93fe83f98d7a5ca1b015acfa01	npm ci	npm run lint	pnpm lint	Modernizr lint target.
+node-red	node-red/node-red	913f34f417a59e0be2cd70ac81fdf68bde042a15	npm ci	npm run lint	pnpm lint	Node-RED lint target.
+claude-hud	jarrodwatts/claude-hud	b83b44593af24de1db6183788a51d08715501c02	npm ci	npm run build	pnpm build	Claude Code plugin build target.
+magicmirror	MagicMirrorOrg/MagicMirror	4b4a59534f7da01e4030e46029fe9dd649a7675e	npm ci	npm run lint:js	pnpm lint:js	Smart mirror app JS lint target.
+opencli	jackwener/OpenCLI	6129bb3953d5eebd8dd67f96802b320c723f50ca	npm ci	npm run typecheck	pnpm typecheck	CLI tool typecheck target.
+p5	processing/p5.js	60ca87da4b70c508b9fa245c765bedbb65dac977	npm ci	npm run lint	pnpm lint	Creative coding library lint target.
+semantic-release	semantic-release/semantic-release	8e28dd3d6c126d8c724027f532452d2f1e3ec9d4	npm ci	npm run test:unit	pnpm test:unit	Release tool unit-test target.

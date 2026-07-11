@@ -509,6 +509,49 @@ NODE
 const fs = require('fs');
 const path = require('path');
 
+const PNPM_COMMANDS = new Set([
+  'add',
+  'approve-builds',
+  'audit',
+  'bin',
+  'config',
+  'create',
+  'deploy',
+  'dlx',
+  'env',
+  'exec',
+  'fetch',
+  'help',
+  'import',
+  'init',
+  'install',
+  'link',
+  'list',
+  'login',
+  'logout',
+  'outdated',
+  'pack',
+  'patch',
+  'patch-commit',
+  'publish',
+  'rebuild',
+  'remove',
+  'root',
+  'run',
+  'setup',
+  'store',
+  'test',
+  'unlink',
+  'uninstall',
+  'update',
+  'upgrade',
+  'why'
+]);
+
+function scriptCommand(name) {
+  return PNPM_COMMANDS.has(name) ? `run ${name}` : name;
+}
+
 function walk(dir, files = []) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     if (entry.name === '.git' || entry.name === 'node_modules' || entry.name === '.pnpm-store') continue;
@@ -540,19 +583,19 @@ for (const packagePath of walk('.')) {
       .replace(/\bnpm ci\b/g, 'pnpm install --frozen-lockfile')
       .replace(/\bnpm install --no-package-lock\b/g, 'pnpm install')
       .replace(/\bnpm install\b/g, 'pnpm install')
-      .replace(/\bnpm --prefix ([^\s&|;]+) run ([A-Za-z0-9:_-]+) --\s*/g, 'pnpm --dir $1 $2 ')
-      .replace(/\bnpm --prefix ([^\s&|;]+) run ([A-Za-z0-9:_-]+)\b/g, 'pnpm --dir $1 $2')
-      .replace(/\bnpm run ([A-Za-z0-9:_-]+) --prefix ([^\s&|;]+)\b/g, 'pnpm --dir $2 $1')
-      .replace(/\bpnpm ([A-Za-z0-9:_-]+) --prefix ([^\s&|;]+)\b/g, 'pnpm --dir $2 $1')
-      .replace(/\bnpm run ([A-Za-z0-9:_-]+)\s+(?:--workspaces|-ws)\b/g, 'pnpm -r $1')
-      .replace(/\bpnpm ([A-Za-z0-9:_-]+)\s+(?:--workspaces|-ws)\b/g, 'pnpm -r $1')
-      .replace(/\bnpm run ([A-Za-z0-9:_-]+)\s+(?:--workspace|-w)\s+([^\s&|;]+)/g, 'pnpm --filter $2 $1')
-      .replace(/\bpnpm ([A-Za-z0-9:_-]+)\s+(?:--workspace|-w)\s+([^\s&|;]+)/g, 'pnpm --filter $2 $1')
-      .replace(/\bnpm run ([A-Za-z0-9:_-]+) --workspaces\b/g, 'pnpm -r $1')
+      .replace(/\bnpm --prefix ([^\s&|;]+) run ([A-Za-z0-9:_-]+) --\s*/g, (_, dir, script) => `pnpm --dir ${dir} ${scriptCommand(script)} `)
+      .replace(/\bnpm --prefix ([^\s&|;]+) run ([A-Za-z0-9:_-]+)\b/g, (_, dir, script) => `pnpm --dir ${dir} ${scriptCommand(script)}`)
+      .replace(/\bnpm run ([A-Za-z0-9:_-]+) --prefix ([^\s&|;]+)\b/g, (_, script, dir) => `pnpm --dir ${dir} ${scriptCommand(script)}`)
+      .replace(/\bpnpm ([A-Za-z0-9:_-]+) --prefix ([^\s&|;]+)\b/g, (_, script, dir) => `pnpm --dir ${dir} ${scriptCommand(script)}`)
+      .replace(/\bnpm run ([A-Za-z0-9:_-]+)\s+(?:--workspaces|-ws)\b/g, (_, script) => `pnpm -r ${scriptCommand(script)}`)
+      .replace(/\bpnpm ([A-Za-z0-9:_-]+)\s+(?:--workspaces|-ws)\b/g, (_, script) => `pnpm -r ${scriptCommand(script)}`)
+      .replace(/\bnpm run ([A-Za-z0-9:_-]+)\s+(?:--workspace|-w)\s+([^\s&|;]+)/g, (_, script, filter) => `pnpm --filter ${filter} ${scriptCommand(script)}`)
+      .replace(/\bpnpm ([A-Za-z0-9:_-]+)\s+(?:--workspace|-w)\s+([^\s&|;]+)/g, (_, script, filter) => `pnpm --filter ${filter} ${scriptCommand(script)}`)
+      .replace(/\bnpm run ([A-Za-z0-9:_-]+) --workspaces\b/g, (_, script) => `pnpm -r ${scriptCommand(script)}`)
       .replace(/\bnpm:([A-Za-z0-9:_*-]+)/g, 'pnpm:$1')
       .replace(/\bnpm install -g ([^\s&|;]+)/g, 'pnpm add -g $1')
-      .replace(/\bnpm run ([A-Za-z0-9:_-]+) --\s+/g, 'pnpm $1 ')
-      .replace(/\bnpm run ([A-Za-z0-9:_-]+)\b/g, 'pnpm $1')
+      .replace(/\bnpm run ([A-Za-z0-9:_-]+) --\s+/g, (_, script) => `pnpm ${scriptCommand(script)} `)
+      .replace(/\bnpm run ([A-Za-z0-9:_-]+)\b/g, (_, script) => `pnpm ${scriptCommand(script)}`)
       .replace(/\bnpm test\b/g, 'pnpm test')
       .replace(/\bnpm start\b/g, 'pnpm start')
       .replace(/\bnpm exec\b/g, 'pnpm exec')

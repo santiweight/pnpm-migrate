@@ -47,7 +47,7 @@ esac
 row="$(awk -F'\t' -v id="$TARGET_ID" 'NR > 1 && $1 == id {print; exit}' "$TARGETS_FILE")"
 [ -n "$row" ] || { echo "unknown target: $TARGET_ID" >&2; exit 1; }
 
-IFS=$'\t' read -r id repo branch install_cmd baseline_cmd post_migrate_cmd notes <<EOF
+IFS=$'\t' read -r id repo commit install_cmd baseline_cmd post_migrate_cmd notes <<EOF
 $row
 EOF
 
@@ -110,12 +110,12 @@ clone_target() {
   mkdir -p "$(dirname "$WORKTREE")"
   if [ -d "$WORKTREE/.git" ]; then
     log "updating existing clone"
-    git -C "$WORKTREE" fetch --depth 1 origin "$branch"
-    git -C "$WORKTREE" checkout "$branch"
-    git -C "$WORKTREE" reset --hard "origin/$branch"
+    git -C "$WORKTREE" fetch origin
+    git -C "$WORKTREE" checkout --detach "$commit"
+    git -C "$WORKTREE" reset --hard "$commit"
     git -C "$WORKTREE" clean -fdx
   else
-    log "cloning $repo#$branch"
+    log "cloning $repo@$commit"
     if [ -n "$MIRROR_ROOT" ]; then
       mkdir -p "$MIRROR_ROOT"
       local mirror="$MIRROR_ROOT/${repo//\//__}.git"
@@ -124,10 +124,11 @@ clone_target() {
       else
         git clone --mirror "https://github.com/$repo.git" "$mirror"
       fi
-      git clone --shared --branch "$branch" "$mirror" "$WORKTREE"
+      git clone --shared "$mirror" "$WORKTREE"
     else
-      git clone --depth 1 --branch "$branch" "https://github.com/$repo.git" "$WORKTREE"
+      git clone "https://github.com/$repo.git" "$WORKTREE"
     fi
+    git -C "$WORKTREE" checkout --detach "$commit"
   fi
 }
 
@@ -139,7 +140,7 @@ run_baseline() {
   local status=0
   timed_run baseline-install bash -lc "$install_cmd" || status=1
   timed_run baseline-test bash -lc "$baseline_cmd" || status=1
-  git -C "$WORKTREE" reset --hard "origin/$branch"
+  git -C "$WORKTREE" reset --hard "$commit"
   git -C "$WORKTREE" clean -fdx
   return "$status"
 }

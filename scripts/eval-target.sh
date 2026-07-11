@@ -27,7 +27,7 @@ fi
 row="$(awk -F'\t' -v id="$TARGET_ID" 'NR > 1 && $1 == id {print; exit}' "$TARGETS_FILE")"
 [ -n "$row" ] || { echo "unknown target: $TARGET_ID" >&2; exit 1; }
 
-IFS=$'\t' read -r id repo branch install_cmd baseline_cmd post_migrate_cmd notes <<EOF
+IFS=$'\t' read -r id repo commit install_cmd baseline_cmd post_migrate_cmd notes <<EOF
 $row
 EOF
 
@@ -56,13 +56,14 @@ clone_target() {
   mkdir -p "$EVAL_ROOT/worktrees"
   if [ -d "$WORKTREE/.git" ]; then
     log "updating existing clone"
-    git -C "$WORKTREE" fetch --depth 1 origin "$branch"
-    git -C "$WORKTREE" checkout "$branch"
-    git -C "$WORKTREE" reset --hard "origin/$branch"
+    git -C "$WORKTREE" fetch origin
+    git -C "$WORKTREE" checkout --detach "$commit"
+    git -C "$WORKTREE" reset --hard "$commit"
     git -C "$WORKTREE" clean -fdx
   else
-    log "cloning $repo#$branch"
-    git clone --depth 1 --branch "$branch" "https://github.com/$repo.git" "$WORKTREE"
+    log "cloning $repo@$commit"
+    git clone "https://github.com/$repo.git" "$WORKTREE"
+    git -C "$WORKTREE" checkout --detach "$commit"
   fi
 }
 

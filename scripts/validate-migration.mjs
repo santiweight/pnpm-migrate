@@ -62,7 +62,7 @@ for (const lockfile of ['package-lock.json', 'npm-shrinkwrap.json']) {
 const hardNpmPattern = /\b(?:npm\s+(?:ci|install|run|test|start|exec)|npx)\b/;
 const npmScriptShorthandPattern = /(^|[\s'"(])npm:[A-Za-z0-9:_*-]+(?=$|[\s'")])/;
 const auditPattern = /\bnpm\s+audit\b/;
-const badPnpmPattern = /\bpnpm\s+(?:exec\s+-(?:y|yes)|install\s+-g|(?:exec|dlx)\s+(?:-[^\s]+\s+)*npm@?[^\s]*)\b|\binstall\/\b/;
+const badPnpmPattern = /\bpnpm\s+(?:exec\s+-(?:y|yes)|install\s+-g|(?:exec|dlx)\s+(?:-[^\s]+\s+)*npm@?[^\s]*)\b|\bpnpm\s+patch\s*(?:$|[;&|])|\binstall\/\b/;
 const removedLockfilePattern = /\b(?:package-lock\.json|npm-shrinkwrap\.json)\b/;
 const unsupportedPnpmLockfileLintPattern = /\blockfile-lint\b.*--path\s+pnpm-lock\.yaml\b/;
 const publishPattern = /\bnpm\s+(?:publish|version)\b/;

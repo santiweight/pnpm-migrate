@@ -14,7 +14,7 @@ Every comparable run uses the same deterministic contract:
 1. Clone a fresh isolated worktree for each method.
 2. Run the target repo's npm baseline install command.
 3. Run the target repo's npm baseline verification command.
-4. Reset the worktree back to the target branch.
+4. Reset the worktree back to the pinned target commit.
 5. Run exactly one migration method: `tool` or `claude`.
 6. Run `scripts/validate-migration.mjs` against the migrated tree.
 7. Run the target repo's pnpm post-migration verification command.
@@ -346,32 +346,57 @@ Rejected local candidates from this batch mostly failed before migration: `clipb
 
 ## Benchmark Plan
 
-After 60 repos, optimization work should use a tiered benchmark suite:
+The benchmark suite uses pinned repo commits only.
 
 | Tier | Purpose | Command shape |
 | --- | --- | --- |
 | Fixture | Catch deterministic regressions cheaply. | `scripts/test-local-fixture.sh` |
-| Phase | Measure migration-only timing on slow repos. | skip baseline, run `migrate` and `validate`, skip repo post-test |
-| Canary | Validate speed changes across representative repos. | 8-12 repos, fast mode, post-tests enabled |
-| Full | Release confidence. | 60 repos, fast mode, post-tests enabled |
+| Deterministic | Clone pinned repo commits into a temp directory, run deterministic migration, then validate the migrated tree. | `scripts/benchmark-deterministic.sh` |
 
 The immediate speed targets are the batch-5 slow migrations: `opencli`, `p5`, `semantic-release`, `magicmirror`, `highlightjs`, `docsify`, `winston`, `mocha`, and `underscore`.
 
-Initial lockfile-tier baseline:
+### Deterministic Benchmark Contract
+
+Use this benchmark to check whether `pnpm-migrate` completes the deterministic migration on stable real-world inputs without cleanup agents or post-migration repo tests.
+
+Targets live in:
 
 ```text
-scripts/benchmark-suite.sh lockfile
+targets/pnpm-deterministic-benchmark-targets.tsv
 ```
 
-Result: `.eval/bench-lockfile` passed 9/9 targets in 218 seconds wall time. Migration phase average was 108.4 seconds; the slowest migration was `magicmirror` at 194 seconds. Because this tier uses `--skip-install`, the remaining cost is mostly lockfile import/resolution and deterministic file rewrites, not repo post-tests.
-
-After adding phase traces and prefiltering the remaining npm/npx report to files that actually mention npm-like commands:
+Each row is pinned by repo and commit:
 
 ```text
-scripts/benchmark-suite.sh lockfile
+id	repo	commit	notes
 ```
 
-Result: `.eval/bench-lockfile-prefilter` passed 9/9 targets in 37 seconds wall time. Migration phase average was 15.3 seconds; the slowest migration was `p5` at 23 seconds. Aggregated phase cost was led by `convert_lockfile` at 77 seconds total and `report_remaining_npm_commands` at 21 seconds total.
+Run all pinned targets:
+
+```bash
+scripts/benchmark-deterministic.sh
+```
+
+Run a subset and keep the temp directory for inspection:
+
+```bash
+TARGETS="opencli p5" PNPM_MIGRATE_BENCH_KEEP_ROOT=1 scripts/benchmark-deterministic.sh
+```
+
+Use a stable output directory:
+
+```bash
+PNPM_MIGRATE_BENCH_ROOT=.eval/deterministic scripts/benchmark-deterministic.sh
+```
+
+The runner contract is:
+
+1. create a temporary benchmark root;
+2. `git clone https://github.com/<repo>.git` into that root;
+3. check out the pinned commit in detached HEAD state;
+4. run `pnpm-migrate.sh --yes --skip-agent --no-tests`;
+5. run `scripts/validate-migration.mjs` against the migrated tree;
+6. write `results.tsv` with `clone`, `migrate`, and `validate` statuses.
 
 `Time saved` should be calculated as:
 
