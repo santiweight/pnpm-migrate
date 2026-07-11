@@ -24,10 +24,13 @@
   },
   "scripts": {
     "dev": "node src/cli.mjs",
-    "check": "tsc --noEmit && node --check src/cli.mjs && bash -n install.sh pnpm-migrate.sh scripts/test-installer-smoke.sh && tsx scripts/test-agent-availability.ts && tsx scripts/test-cleanup-agent.ts && tsx scripts/test-pr-green.ts && scripts/benchmark-suite.sh fixture"
+    "typecheck": "tsc --noEmit && node --check src/cli.mjs",
+    "test": "node --import tsx --test tests/*.test.ts",
+    "check": "pnpm typecheck && pnpm test",
+    "benchmark": "tsx benchmarks/deterministic.ts"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22.13"
   },
   "dependencies": {
     "@clack/prompts": "^1.7.0",
