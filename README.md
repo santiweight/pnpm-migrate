@@ -1,0 +1,24 @@
+# npm-basic
+
+```bash
+npm install
+npm start
+npm run build
+npm test
+npx cowsay hello
+```
+
+Install it in another project:
+
+```bash
+npm install npm-basic --save
+npm install --save-dev npm-basic
+```
+
+Release commands are not rewritten automatically:
+
+```bash
+npm publish
+```
+
+Contributor checks: `npm test && npm run build`
