@@ -212,7 +212,7 @@ test("rejects an existing same-name repository that is not an upstream fork", (t
   assert.doesNotMatch(harness.calls(), /gh (repo fork|pr create)/);
 });
 
-test("does not create a pull request when pushing to the fork fails", (t) => {
+test("does not create a PR when pushing to the fork fails", (t) => {
   const harness = makePublishingHarness(t, "fork-push-failure");
   const result = harness.publish();
 

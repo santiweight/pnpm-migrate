@@ -263,7 +263,7 @@ export function publishBranch(
     return pushed;
   }
 
-  onStatus?.("Creating pull request");
+  onStatus?.("Creating PR");
   return createPullRequest(branch, baseBranch, pushed);
 }
 
@@ -328,7 +328,7 @@ export function getPullRequestCheckSummary(worktree: MigrationWorktree, prUrl: s
   );
 
   if (checks.status !== 0) {
-    return checks.stderr || checks.stdout || "Could not read pull request checks.";
+    return checks.stderr || checks.stdout || "Could not read PR checks.";
   }
 
   return checks.stdout;
@@ -378,7 +378,7 @@ export async function waitForPullRequestChecks(
 
     if (state === "failed") {
       return {
-        error: "Pull request checks failed",
+        error: "PR checks failed",
         logPath,
         passed: false,
       };
@@ -388,7 +388,7 @@ export async function waitForPullRequestChecks(
   }
 
   return {
-    error: "Timed out waiting for pull request checks",
+    error: "Timed out waiting for PR checks",
     logPath,
     passed: false,
   };

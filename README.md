@@ -10,7 +10,7 @@ curl -fsSL https://raw.githubusercontent.com/santiweight/pnpm-migrate/main/insta
 
 `pnpm-migrate` will migrate the basics, and then migrate the annoying stuff: readmes, dockerfiles, contributor docs, and then test that it works before making a PR for you.
 
-If you cannot push to the upstream repository, `pnpm-migrate` uses your authenticated GitHub CLI account to create or reuse a fork and opens the pull request from there.
+If you cannot push to the upstream repository, `pnpm-migrate` uses your authenticated GitHub CLI account to create or reuse a fork and opens the PR from there.
 
 ## 🚀 pnpm-migrate is faster than Claude
 

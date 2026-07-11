@@ -39,6 +39,7 @@ import {
   showMigrationSummary,
   showPublishFailure,
   showPublishSkipped,
+  showPrUrl,
   showPrFixWaiting,
   redTitle,
   showWorktreeSafety,
@@ -96,7 +97,7 @@ async function runPublishPhase(
   });
   publishSpinner.stop(
     published.prUrl
-      ? "Pull request created"
+      ? "PR created"
       : published.pushed
         ? `Pushed branch to ${published.remoteName}`
       : `Push failed for ${remoteName}`,
@@ -108,7 +109,9 @@ async function runPublishPhase(
   }
 
   if (!published.prUrl) {
-    showPublishSkipped("GitHub CLI was not found, so no pull request was created.");
+    showPublishSkipped("GitHub CLI was not found, so no PR was created.");
+  } else {
+    showPrUrl(published.prUrl);
   }
 
   return published;
@@ -425,11 +428,11 @@ export async function runInteractiveWorkflow(
   if (publish?.prUrl) {
     const prGreenSpinner = spinner();
     uiSpacer();
-    prGreenSpinner.start("Waiting for pull request checks");
+    prGreenSpinner.start("Waiting for PR checks");
     prGreen = await ensurePullRequestGreen(selectedAgent, worktree, publish, {
       maxFixAttempts: 2,
       onFixAttempt: () => {
-        prGreenSpinner.stop("Pull request checks failed");
+        prGreenSpinner.stop("PR checks failed");
         uiSpacer();
         showPrFixWaiting();
         uiSpacer();
@@ -442,8 +445,8 @@ export async function runInteractiveWorkflow(
     });
     prGreenSpinner.stop(
       prGreen.passed
-        ? "Pull request checks passed"
-        : "Pull request checks did not pass",
+        ? "PR checks passed"
+        : "PR checks did not pass",
     );
     await telemetry.capture(prGreen.passed ? "ci_passed" : "ci_failed", {
       attempts: prGreen.attempts,

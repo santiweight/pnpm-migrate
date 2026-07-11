@@ -18,9 +18,9 @@ function buildGreenPrompt(prUrl: string, checkSummary: string, attempt: number):
   return [
     "You are continuing the pnpm-migrate cleanup session in the same temporary git worktree.",
     "",
-    "Goal: make the migration pull request go green.",
+    "Goal: make the migration PR go green.",
     "",
-    `Pull request: ${prUrl}`,
+    `PR: ${prUrl}`,
     `CI fix attempt: ${attempt} of 2`,
     "",
     "Do this:",
@@ -51,7 +51,7 @@ export async function ensurePullRequestGreen(
   if (!publish.prUrl || !publish.remoteName) {
     return {
       attempts: 0,
-      error: "No pull request was created.",
+      error: "No PR was created.",
       lastLogPath: null,
       passed: false,
       skipped: true,
@@ -137,7 +137,7 @@ export async function ensurePullRequestGreen(
 
   return {
     attempts: maxFixAttempts,
-    error: "Pull request checks did not pass.",
+    error: "PR checks did not pass.",
     lastLogPath,
     passed: false,
     skipped: false,
