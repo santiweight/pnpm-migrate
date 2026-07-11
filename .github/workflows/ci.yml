@@ -35,6 +35,8 @@ jobs:
         target:
           - clean-and-green-philly
           - actor-rag-web-browser
+          - axe-core
+          - pollinations
     steps:
       - uses: actions/checkout@v4
         with:
