@@ -47,6 +47,5 @@ The benchmark contract is:
 1. clone the target repo into a temporary directory;
 2. check out the pinned commit in detached HEAD state;
 3. run `pnpm-migrate.sh --yes --skip-agent --no-tests`;
-4. run `scripts/validate-migration.mjs`;
+4. validate the migrated repo through the shared TypeScript validation API;
 5. write `results.tsv`.
-
