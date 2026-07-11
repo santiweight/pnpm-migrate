@@ -104,6 +104,7 @@ export function commitWorktree(worktree: MigrationWorktree, options: CommitOptio
       "-c",
       "user.email=pnpm-migrate@example.invalid",
       "commit",
+      "--no-verify",
       "-m",
       options.message,
       "-m",
