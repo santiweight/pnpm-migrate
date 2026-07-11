@@ -28,6 +28,7 @@ test("creates and publishes through a fork when upstream denies writes", (t) => 
   const binDir = path.join(root, "bin");
   const project = path.join(root, "project");
   const forkMarker = path.join(root, "fork-created");
+  const forkViewCount = path.join(root, "fork-view-count");
   const ghCalls = path.join(root, "gh-calls");
   const originalPath = process.env.PATH ?? "";
   mkdirSync(binDir);
@@ -62,6 +63,13 @@ test("creates and publishes through a fork when upstream denies writes", (t) => 
     'if [ "${1:-} ${2:-}" = "api user" ]; then echo alice; exit 0; fi',
     'if [ "${1:-} ${2:-}" = "repo view" ]; then',
     `  if [ -f ${JSON.stringify(forkMarker)} ]; then`,
+    `    count=$(cat ${JSON.stringify(forkViewCount)} 2>/dev/null || echo 0)`,
+    "    count=$((count + 1))",
+    `    echo "$count" > ${JSON.stringify(forkViewCount)}`,
+    "    if [ \"$count\" -eq 1 ]; then",
+    "      echo '{\"isFork\":false,\"parent\":null}'",
+    "      exit 0",
+    "    fi",
     "    echo '{\"isFork\":true,\"parent\":{\"nameWithOwner\":\"upstream/project\"}}'",
     "    exit 0",
     "  fi",
