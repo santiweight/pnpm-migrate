@@ -19,7 +19,11 @@ import {
 import { ensurePullRequestGreen, type PullRequestGreenResult } from "../core/pr-green.ts";
 import { createMigrationWorktree } from "../core/worktree.ts";
 import { detectEnvironment } from "../core/preflight.ts";
-import { runDeterministicMigration } from "../core/deterministic.ts";
+import {
+  isRecoverableTs2742Failure,
+  runDeterministicMigration,
+  runDeterministicVerification,
+} from "../core/deterministic.ts";
 import { createChecklistRenderer } from "../ui/checklist.ts";
 import { createEnvironmentProgressRenderer } from "../ui/environment.ts";
 import {
@@ -189,7 +193,7 @@ export async function runInteractiveWorkflow(
   };
   checklist.render(checklistState);
 
-  const result = await runDeterministicMigration(
+  let result = await runDeterministicMigration(
     options.enginePath,
     worktree,
     tracePath,
@@ -198,31 +202,42 @@ export async function runInteractiveWorkflow(
     },
   );
   checklistState.running = false;
+  const selectedAgent = env.agents[0];
+  const canRecoverDeterministicFailure = (
+    result.code !== 0 &&
+    !options.autoApprove &&
+    Boolean(selectedAgent) &&
+    isRecoverableTs2742Failure(result.logPath)
+  );
 
   if (result.code !== 0) {
     await telemetry.capture("deterministic_migration_failed", {
       duration_ms: result.durationMs,
       exit_code: result.code,
-    });
-    await telemetry.capture("run_failed", {
-      duration_ms: Date.now() - runStartedAt,
-      failure_stage: "deterministic_migration",
+      recoverable_ts2742: canRecoverDeterministicFailure,
     });
     checklist.render(checklistState);
-    checklist.finish();
-    showMigrationSummary(
-      buildMigrationSummary(
-        worktree,
-        {
-          changedFileCount: countChangedFiles(worktree),
-          committed: false,
-          error: "Migration failed before commit",
+
+    if (!canRecoverDeterministicFailure) {
+      await telemetry.capture("run_failed", {
+        duration_ms: Date.now() - runStartedAt,
+        failure_stage: "deterministic_migration",
+      });
+      checklist.finish();
+      showMigrationSummary(
+        buildMigrationSummary(
           worktree,
-        },
-        result,
-      ),
-    );
-    showDeterministicFailure();
+          {
+            changedFileCount: countChangedFiles(worktree),
+            committed: false,
+            error: "Migration failed before commit",
+            worktree,
+          },
+          result,
+        ),
+      );
+      showDeterministicFailure();
+    }
   }
 
   checklistState.commit = "active";
@@ -232,10 +247,12 @@ export async function runInteractiveWorkflow(
   checklist.render(checklistState);
   checklist.finish();
 
-  await telemetry.capture("deterministic_migration_passed", {
-    committed: commitResult.committed,
-    duration_ms: result.durationMs,
-  });
+  if (result.code === 0) {
+    await telemetry.capture("deterministic_migration_passed", {
+      committed: commitResult.committed,
+      duration_ms: result.durationMs,
+    });
+  }
 
   if (!commitResult.committed) {
     showUncommittedFinish();
@@ -265,7 +282,6 @@ export async function runInteractiveWorkflow(
     return;
   }
 
-  const selectedAgent = env.agents[0];
   if (!selectedAgent) {
     await telemetry.capture("agent_cleanup_skipped", {
       reason: "no_agent",
@@ -350,6 +366,48 @@ export async function runInteractiveWorkflow(
     agent: selectedAgent.id,
     duration_ms: cleanup.run.durationMs,
   });
+
+  if (canRecoverDeterministicFailure) {
+    const verifySpinner = spinner();
+    uiSpacer();
+    verifySpinner.start("Verifying cleanup fixed deterministic migration failure");
+    const verification = await runDeterministicVerification(
+      options.enginePath,
+      worktree,
+    );
+    verifySpinner.stop(
+      verification.code === 0
+        ? "Cleanup verification passed"
+        : "Cleanup verification failed",
+    );
+    result = verification;
+
+    if (verification.code !== 0) {
+      await telemetry.capture("run_failed", {
+        duration_ms: Date.now() - runStartedAt,
+        failure_stage: "post_cleanup_verification",
+      });
+      showMigrationSummary(
+        buildMigrationSummary(
+          worktree,
+          {
+            changedFileCount: commitResult.changedFileCount + cleanup.commit.changedFileCount,
+            committed: true,
+            error: "Cleanup did not fix deterministic verification",
+            worktree,
+          },
+          verification,
+        ),
+      );
+      process.exit(1);
+    }
+
+    await telemetry.capture("deterministic_migration_passed", {
+      committed: commitResult.committed,
+      duration_ms: verification.durationMs,
+      recovered_ts2742: true,
+    });
+  }
 
   const finalCommitResult: CommitResult = {
     ...commitResult,
